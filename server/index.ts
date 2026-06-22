@@ -747,6 +747,9 @@ app.use((req, res, next) => {
   const { createAccountDeletionsTable } = await import('./migrations/0040_account_deletions');
   await createAccountDeletionsTable();
 
+  const { addMpSubscriptionIdColumns } = await import('./migrations/0041_mp_subscription_id');
+  await addMpSubscriptionIdColumns();
+
   // Task #282: barrer conversaciones vencidas (>30 min) cada 5 min para que
   // la tabla no crezca sin límite. El TTL ya se aplica en lecturas; esto
   // es solo limpieza física.

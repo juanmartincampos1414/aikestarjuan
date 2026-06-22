@@ -14,8 +14,11 @@ services:
     plan: free   # gratis (se duerme tras inactividad); subir a 'starter' (~7USD/mes) para always-on
     # --include=dev: Render setea NODE_ENV=production y npm omitiría las devDependencies
     # (vite, esbuild, drizzle-kit, tsx) necesarias para compilar. Forzamos instalarlas.
-    # drizzle-kit push: crea/actualiza el esquema en la base antes de buildear.
-    buildCommand: npm install --include=dev && npx drizzle-kit push --force && npm run build
+    # drizzle-kit push es NO-FATAL (|| true): en el primer deploy crea las 52 tablas,
+    # pero en deploys posteriores puede chocar con drift de PKs en tablas con datos.
+    # Los cambios de esquema incrementales los aplican las migraciones de arranque
+    # (server/migrations/00XX), así que un push fallido no debe romper el build.
+    buildCommand: npm install --include=dev && (npx drizzle-kit push --force || echo "drizzle push omitido; el esquema se aplica por migraciones de arranque") && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
