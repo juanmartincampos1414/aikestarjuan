@@ -1,0 +1,20 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+.git.backup.*
+
+# Local dev (contienen secretos o son específicos de esta máquina)
+dev-local.sh
+.env
+.env.*
+.pgdata
+*.log
+
+# Screenshots / artefactos de prueba locales
+shot.mjs
+login-shot.mjs
+aikestar_home.png
+aikestar_dash.png

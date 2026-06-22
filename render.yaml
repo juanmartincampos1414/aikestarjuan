@@ -1,0 +1,40 @@
+# Render Blueprint para Aikestar — crea la base PostgreSQL y el web service Node.
+# Para usarlo: en Render → New → Blueprint → conectá el repo de GitHub con este archivo.
+# Docs: https://render.com/docs/blueprint-spec
+databases:
+  - name: aikestar-db
+    databaseName: aikestar
+    user: aikestar
+    plan: free   # gratis ~30 días; para producción real subir a un plan pago
+
+services:
+  - type: web
+    name: aikestar
+    runtime: node
+    plan: free   # gratis (se duerme tras inactividad); subir a 'starter' (~7USD/mes) para always-on
+    # --include=dev: Render setea NODE_ENV=production y npm omitiría las devDependencies
+    # (vite, esbuild, drizzle-kit, tsx) necesarias para compilar. Forzamos instalarlas.
+    # drizzle-kit push: crea/actualiza el esquema en la base antes de buildear.
+    buildCommand: npm install --include=dev && npx drizzle-kit push --force && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true            # Render genera un secreto seguro
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aikestar-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false                    # se carga a mano en el dashboard (secreto)
+      # --- Opcionales (dejar sin valor hasta que tengas las claves) ---
+      # - key: AI_INTEGRATIONS_GEMINI_API_KEY   # solo transcripción de audio de WhatsApp
+      #   sync: false
+      # - key: AI_INTEGRATIONS_GEMINI_BASE_URL
+      #   sync: false
+      # - key: STRIPE_SECRET_KEY                # registro de cuentas y cobros
+      #   sync: false
+      # - key: SENDGRID_API_KEY                 # emails
+      #   sync: false

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+    <!--
+      Canonical-host gate for marketing/analytics pixels.
+      Set very early so subsequent <script> blocks (GTM, Meta Pixel, Metricool, TikTok Pixel)
+      can opt out cleanly when the page is being served from a non-canonical
+      host (e.g. the Replit workspace preview *.replit.dev or the deployment's
+      raw *.replit.app URL). This prevents conversions from being attributed
+      under the wrong domain in Ads Manager / GA4.
+
+      We intentionally allow tracking on the canonical apex AND its www
+      subdomain. Everything else (Replit preview/deploy URLs, custom dev
+      hosts, localhost) is blocked.
+    -->
+    <script>
+      (function () {
+        var h = (window.location && window.location.hostname || '').toLowerCase();
+        // Edit this list when adding new canonical hosts.
+        var allowed = ['aikestar.net', 'www.aikestar.net'];
+        window.__AIKESTAR_TRACKING_ENABLED__ = allowed.indexOf(h) !== -1;
+      })();
+    </script>
+
+    <!--
+      No-flash dark-mode bootstrap. Runs synchronously before the React app
+      mounts so the `dark` class is applied on <html> before first paint and
+      users never see a white flash when their saved theme is dark.
+      Keys mirror what next-themes uses (storageKey="aikestar-theme").
+    -->
+    <script>
+      (function () {
+        try {
+          var key = 'aikestar-theme';
+          var stored = localStorage.getItem(key);
+          var isDark;
+          if (stored === 'dark') {
+            isDark = true;
+          } else if (stored === 'light') {
+            isDark = false;
+          } else {
+            // system / unset → follow OS preference
+            isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          var root = document.documentElement;
+          if (isDark) {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
+          } else {
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+          }
+        } catch (e) {
+          // Best-effort: if storage is blocked we just stay on the default (light).
+        }
+      })();
+    </script>
+
+    <!-- Google Tag Manager (canonical-host only) -->
+    <script>
+      if (window.__AIKESTAR_TRACKING_ENABLED__) {
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-KCMGT9P4');
+      }
+    </script>
+    <!-- End Google Tag Manager -->
+
+    <title>Aikestar - Gestión Administrativa e Inteligente</title>
+    <link rel="canonical" href="https://aikestar.net/" />
+    <meta property="og:title" content="Aikestar - Gestión Administrativa e Inteligente" />
+    <meta property="og:description" content="Sistema de gestión administrativa y contable con IA para pymes y emprendedores. Control de movimientos, reportes y más." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aikestar.net/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Aikestar" />
+    <meta name="twitter:description" content="Sistema de gestión administrativa y contable con IA para pymes y emprendedores." />
+    
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Apple Touch Icons for iOS home screen -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Aikestar" />
+    <meta name="theme-color" content="#2DB3B3" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Meta Pixel Code (canonical-host only) -->
+    <script>
+      if (window.__AIKESTAR_TRACKING_ENABLED__) {
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '1422878702663873');
+        fbq('init', '9301651786560151');
+        fbq('track', 'PageView');
+      }
+    </script>
+    <!-- End Meta Pixel Code -->
+    <!-- Metricool (canonical-host only) -->
+    <script>
+      if (window.__AIKESTAR_TRACKING_ENABLED__) {
+        (function(){function loadScript(a){var b=document.getElementsByTagName("head")[0],c=document.createElement("script");c.type="text/javascript",c.src="https://tracker.metricool.com/resources/be.js",c.onreadystatechange=a,c.onload=a,b.appendChild(c)}loadScript(function(){beTracker.t({hash:"ec265b1a572eade3cf7f26e10e48cc0c"})});})();
+      }
+    </script>
+    <!-- End Metricool -->
+    <!-- TikTok Pixel Code (canonical-host only) -->
+    <script>
+      if (window.__AIKESTAR_TRACKING_ENABLED__) {
+        !function (w, d, t) {
+          w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(
+          var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script")
+          ;n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
+          ttq.load('D7TNBNJC77U2TFGF6450');
+          ttq.page();
+        }(window, document, 'ttq');
+      }
+    </script>
+    <!-- End TikTok Pixel Code -->
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KCMGT9P4"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1422878702663873&ev=PageView&noscript=1"
+    /></noscript>
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=9301651786560151&ev=PageView&noscript=1"
+    /></noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

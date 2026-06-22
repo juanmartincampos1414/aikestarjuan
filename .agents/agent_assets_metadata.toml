@@ -1,0 +1,20 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "mAZHC-Jg4xZj28h1cNsmH"
+uri = "file://.local/exports/aikestar-planes.md"
+type = "text"
+title = "Aikestar — Planes y funcionalidades (para demos)"
+
+[[outputs]]
+id = "z7EQLxDd3yW1vRODGaxRg"
+uri = "file://.local/exports/aikestar-planes.docx"
+type = "word_document"
+title = "Aikestar — Planes y funcionalidades (sin ARCA)"
+
+[[outputs]]
+id = "IFdDipzPa-NngkQ7bpnZT"
+uri = "file://exports/aikestar-costos.docx"
+type = "word_document"
+title = "Costos mensuales Aikestar - 100 / 1.000 / 5.000 usuarios"

@@ -1,0 +1,24 @@
+- [Fecha "hoy" en hora Argentina](argentina-today.md) — usar `getArgentinaToday()` de `@shared/constants`, nunca `new Date().toISOString()` para el día calendario.
+- [WhatsApp resolución de categoría](whatsapp-category-resolution.md) — precedencia contenido del mensaje > preferencia > patrón; detectEditIntent 'category' y cómo cambiarla en confirmación.
+- [accounts sin isActive](accounts-no-isactive.md) — la tabla accounts no tiene isActive; filtrar por a.isActive vacía la lista; filtrar solo por moneda.
+- [transactions.category es NOT NULL](transactions-category-not-null.md) — la DB exige category aunque Drizzle lo declara nullable; todo flujo que cree movimientos debe enviar un concepto.
+- [Facturitas PDF SAS URLs expire](facturitas-pdf-sas-urls.md) — stored invoice/NC PDF links are time-limited Azure SAS; re-fetch fresh by uuid + allowlist the blob host.
+- [ARCA tope precio unitario monotributo](arca-monotributo-unit-price-cap.md) — Factura C rechaza unit_price por ítem > ~613492; subir cantidad o dividir en ítems ayuda; no inventar ítems, el usuario los carga.
+- [Registro por audiencia](audience-landing-registration.md) — ?audience= filtra planes via allowedPlans; sin audiencia se muestran todos; preservar el query al cambiar de tab.
+- [Alertas de errores del sistema por email](system-error-email-alerts.md) — email/IP SÍ, credenciales NO (redactar); cubrir 500 directos (res.status) además del error handler; solo producción. Incluye panel persistido: dedupe atómico con índice único parcial + ON CONFLICT, reabrir → 409, migraciones versionadas en server/migrations corren en boot (prod no usa db:push).
+- [WAF Cloud Armor bloquea "settype"](cloud-armor-settype-waf.md) — 403 text/html sin x-powered-by = WAF de borde; corta substrings de funciones PHP (settype dentro de `assetType`) en bodies; evitar esos nombres de campo.
+- [PDF de presupuestos](quote-pdf-generation.md) — se genera en cliente con jsPDF y doc.save() (descarga), no con window.print(); logo vía canvas con fallback si no hay CORS.
+- [CAC real](cac-real-computation.md) — gasto de adquisición por mes (tabla acquisition_spend) / altas deduplicadas; blended sobre meses con gasto; UI cae a estimación si falta data.
+- [FormLabel requiere FormField](formlabel-needs-formfield.md) — primitivas de ui/form crashean fuera de <FormField>; en listas dinámicas usar <Label> de ui/label.
+- [Campos extra y updateTransactionSchema .strict()](strict-update-schema-extra-fields.md) — el PATCH de transacciones da 400 con claves fuera del schema; stripear el campo extra antes del parse estricto y validarlo aparte.
+- [Prod usa Neon Ohio, no la base de Replit](prod-db-neon-ohio.md) — runtime prod = NEON_OHIO_URL; el paso "Database migrations" del Publish va a la base equivocada; esquema a prod solo vía migraciones versionadas en server/migrations al bootear.
+- [Candado conversación WhatsApp](whatsapp-lock-hang.md) — NO usar advisory lock de sesión sobre Neon pooled (no se libera); candado con TTL en tabla whatsapp_locks que se autovence.
+- [Editar filas en preview de import](import-edit-preview.md) — filas editadas se envían con claves canónicas; la 1ra preview usa filas originales para preservar MISSING_NAME_COLUMN.
+- [Renglones de presupuestos](quote-items.md) — quoteItems espejo de transactionItems con productId nullable; al ganar solo se precargan items si todos tienen productId, >=2 y sin conversión de moneda.
+- [Resumen semanal en Autoscale](weekly-digest-scheduled.md) — cron in-process NO dispara en Autoscale (escala a cero); se envía con trigger "al despertar" (boot+interval) gateado a lunes 6 AM ART + idempotencia por (user,week).
+- [IVA por producto — propagación](iva-per-product-propagation.md) — single-product necesita product.ivaAliquot en el detalle + rama else del modal; wizard siembra invoiceIvaAliquot; Impuestos sale del snapshot; aceptar 0% explícito.
+- [Validación invoiceNumber al editar](invoice-number-edit-validation.md) — formato ARCA se valida SOLO si cambia; 3 capas (server PATCH, form superRefine, error inline); ARCA/manuales viejos no canónicos.
+- [Registro vía pending_signups](signup-pending-flow.md) — el user real se crea tras el checkout de Stripe; todo campo nuevo del form va a pending_signups y luego se copia al createUser.
+- [Registro de bajas de cuentas](account-deletions-log.md) — tabla account_deletions SIN FK a users (sobrevive hard-delete); registrar antes del delete en try/catch no bloqueante; reasons non_payment/cancellation/inactivity.
+- [Consistencia métricas admin](admin-metrics-consistency.md) — cada tarjeta = su click-filter; métricas saltean soft-deleted (UI usa !deletedAt); enum es 'cancelled' (2 L) y cancelAtPeriodEnd ≠ cancelación real.
+- [Testear componentes Radix bajo tsx](jsdom-radix-component-tests.md) — montar shadcn/Radix en jsdom dentro de server/*.test.ts: forzar globals DOM/Event de jsdom (Node mete realm mismatch), polyfills, act(), portal clicks.

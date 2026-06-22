@@ -1,0 +1,354 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Tailwind v4 theme.
+ *
+ * IMPORTANT: with `@theme inline`, every value declared here is INLINED
+ * literally into the generated utility classes (e.g. `bg-background`
+ * compiles to `background-color: var(--background)`, not the raw HSL).
+ * That indirection is what lets `.dark { --background: ... }` actually
+ * take effect at runtime — overriding `--color-background` directly
+ * here would NOT switch the theme because the utility class would have
+ * already been compiled with the light value.
+ *
+ * So: keep the chromatic tokens pointing to plain `var(--name)` and
+ * declare the actual HSL values in `:root` (light) and `.dark` (dark)
+ * below. Non-chromatic tokens (radii, fonts, brand literals) stay as
+ * literals — they don't need to switch with the theme.
+ */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand literals: fixed values, identical in light and dark. */
+  --color-aikestar-teal: hsl(174 58% 42%); /* #2DB3B3 */
+  --color-aikestar-red: hsl(352 84% 52%); /* #ED1E3A */
+  --color-aikestar-dark: hsl(220 30% 8%);
+  --color-aikestar-light: var(--aikestar-light);
+
+  --font-sans: 'Montserrat', 'Inter', sans-serif;
+  --font-display: 'Montserrat', 'Outfit', sans-serif;
+
+  --radius: 0.75rem;
+}
+
+/* Light theme — default. */
+:root {
+  --background: hsl(210 20% 98%);
+  --foreground: hsl(220 25% 10%);
+
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(220 25% 10%);
+
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(220 25% 10%);
+
+  --primary: hsl(174 58% 42%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  --secondary: hsl(210 20% 96%);
+  --secondary-foreground: hsl(220 25% 10%);
+
+  --muted: hsl(210 15% 94%);
+  --muted-foreground: hsl(215 14% 45%);
+
+  --accent: hsl(352 84% 52%);
+  --accent-foreground: hsl(0 0% 100%);
+
+  --destructive: hsl(352 84% 52%);
+  --destructive-foreground: hsl(0 0% 100%);
+
+  --success: hsl(152 70% 38%);
+  --success-foreground: hsl(0 0% 100%);
+
+  --border: hsl(214 18% 90%);
+  --input: hsl(214 18% 90%);
+  --ring: hsl(174 58% 42%);
+
+  --chart-1: hsl(174 58% 42%);
+  --chart-2: hsl(152 70% 38%);
+  --chart-3: hsl(352 84% 52%);
+  --chart-4: hsl(38 92% 55%);
+  --chart-5: hsl(262 60% 58%);
+
+  /* Sidebar: dark by design in both themes. */
+  --sidebar: hsl(220 30% 8%);
+  --sidebar-foreground: hsl(210 20% 92%);
+  --sidebar-primary: hsl(174 58% 42%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(220 28% 14%);
+  --sidebar-accent-foreground: hsl(210 20% 92%);
+  --sidebar-border: hsl(220 25% 18%);
+  --sidebar-ring: hsl(174 58% 42%);
+
+  --aikestar-light: hsl(174 45% 95%);
+}
+
+/*
+ * Dark theme. Strategy: invert neutrals, preserve brand accents (teal +
+ * red) with a slight bump in lightness for contrast against the darker
+ * page background. Sidebar is already dark, only nudged for separation.
+ */
+.dark {
+  --background: hsl(220 25% 6%);
+  --foreground: hsl(210 20% 96%);
+
+  --card: hsl(220 24% 10%);
+  --card-foreground: hsl(210 20% 96%);
+
+  --popover: hsl(220 24% 10%);
+  --popover-foreground: hsl(210 20% 96%);
+
+  --primary: hsl(174 58% 48%);
+  --primary-foreground: hsl(220 25% 6%);
+
+  --secondary: hsl(220 20% 14%);
+  --secondary-foreground: hsl(210 20% 96%);
+
+  --muted: hsl(220 20% 14%);
+  --muted-foreground: hsl(215 14% 65%);
+
+  --accent: hsl(352 84% 58%);
+  --accent-foreground: hsl(0 0% 100%);
+
+  --destructive: hsl(352 84% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+
+  --success: hsl(152 60% 45%);
+  --success-foreground: hsl(220 25% 6%);
+
+  --border: hsl(220 18% 20%);
+  --input: hsl(220 18% 20%);
+  --ring: hsl(174 58% 48%);
+
+  --chart-1: hsl(174 58% 52%);
+  --chart-2: hsl(152 60% 50%);
+  --chart-3: hsl(352 84% 60%);
+  --chart-4: hsl(38 92% 60%);
+  --chart-5: hsl(262 60% 65%);
+
+  --sidebar: hsl(220 30% 5%);
+  --sidebar-foreground: hsl(210 20% 92%);
+  --sidebar-primary: hsl(174 58% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(220 28% 12%);
+  --sidebar-accent-foreground: hsl(210 20% 92%);
+  --sidebar-border: hsl(220 25% 16%);
+  --sidebar-ring: hsl(174 58% 48%);
+
+  --aikestar-light: hsl(174 45% 18%);
+}
+
+@keyframes float-warning {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.3); }
+}
+
+.animate-float-warning {
+  animation: float-warning 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    @apply overflow-x-hidden;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    background-image: 
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(174 58% 42% / 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, hsl(352 84% 52% / 0.05) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(174 58% 48% / 0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, hsl(352 84% 58% / 0.08) 0%, transparent 60%);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-lg shadow-slate-200/30
+           dark:bg-card/80 dark:border-border/60 dark:shadow-black/40;
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(174 58% 42%) 0%, hsl(352 84% 52%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .aikestar-gradient {
+    background: linear-gradient(135deg, hsl(174 58% 42%) 0%, hsl(174 58% 35%) 100%);
+  }
+  .aikestar-gradient-accent {
+    background: linear-gradient(135deg, hsl(174 58% 42%) 0%, hsl(352 84% 52%) 100%);
+  }
+  .aikestar-gradient-reverse {
+    background: linear-gradient(135deg, hsl(352 84% 52%) 0%, hsl(174 58% 42%) 100%);
+  }
+  .sidebar-gradient {
+    background: linear-gradient(180deg, hsl(220 30% 10%) 0%, hsl(220 30% 6%) 100%);
+  }
+  .modern-shadow {
+    box-shadow: 
+      0 1px 3px hsl(220 20% 85% / 0.4),
+      0 4px 12px hsl(220 20% 80% / 0.2),
+      0 12px 32px hsl(220 20% 75% / 0.1);
+  }
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:shadow-primary/8 hover:-translate-y-0.5;
+  }
+  .futuristic-glow {
+    box-shadow: 0 0 24px hsl(174 58% 42% / 0.25), 0 0 48px hsl(352 84% 52% / 0.15);
+  }
+  .input-glow:focus {
+    box-shadow: 0 0 0 3px hsl(174 58% 42% / 0.2);
+  }
+  .teal-glow {
+    box-shadow: 0 4px 20px hsl(174 58% 42% / 0.25);
+  }
+  .premium-border {
+    border: 1px solid hsl(174 58% 42% / 0.2);
+  }
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  fill: var(--color-muted-foreground) !important;
+  color: var(--color-muted-foreground) !important;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--color-border) !important;
+}
+.recharts-default-tooltip {
+  background-color: var(--color-popover) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-popover-foreground) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.15) !important;
+}
+.recharts-tooltip-label,
+.recharts-tooltip-item,
+.recharts-tooltip-item-name,
+.recharts-tooltip-item-value {
+  color: var(--color-popover-foreground) !important;
+}
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+@keyframes logo-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.02); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 3s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/*
+ * Landings por audiencia (pymes / emprendedores / parejas).
+ * Paleta oklch acotada bajo `.landing-scope` para no pisar el tema global.
+ * Sobrescribe únicamente los tokens que usan las landings; al estar en una
+ * clase wrapper, sólo afecta a los descendientes de la landing.
+ */
+.landing-scope {
+  --background: oklch(0.16 0.015 220);
+  --background-deep: oklch(0.11 0.015 220);
+  --foreground: oklch(0.98 0.005 220);
+  --muted-foreground: oklch(0.72 0.02 220);
+  --primary-foreground: oklch(0.12 0.015 220);
+  --border: oklch(1 0 0 / 8%);
+  --brand-teal: oklch(0.60 0.11 220);
+  --brand-coral: oklch(0.58 0.22 25);
+  --brand-blue: oklch(0.60 0.11 220);
+  --gradient-brand: linear-gradient(135deg, #148CB4, #DC1428);
+  --gradient-radial: radial-gradient(ellipse at top, oklch(0.60 0.11 220 / 0.20), transparent 60%), radial-gradient(ellipse at bottom right, oklch(0.58 0.22 25 / 0.18), transparent 60%);
+  --shadow-glow: 0 20px 60px -15px oklch(0.60 0.11 220 / 0.45);
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aikestar",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["dev-local.sh"],
+      "port": 5050
+    }
+  ]
+}
