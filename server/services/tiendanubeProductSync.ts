@@ -29,6 +29,16 @@ export interface MappedProduct {
   barcode: string | null;
   salePrice: string;
   stock: string;
+  imageUrl: string | null;
+}
+
+// La imagen principal de un producto de Tiendanube viene en `images[0].src`
+// (ordenadas por `position`). Tomamos la de menor posición.
+function firstImageUrl(p: any): string | null {
+  const imgs = Array.isArray(p?.images) ? p.images : [];
+  if (imgs.length === 0) return null;
+  const sorted = [...imgs].sort((a, b) => (a?.position ?? 999) - (b?.position ?? 999));
+  return sorted[0]?.src ?? null;
 }
 
 export function mapTiendanubeProduct(p: any): MappedProduct {
@@ -41,6 +51,7 @@ export function mapTiendanubeProduct(p: any): MappedProduct {
     barcode: variant.barcode ?? null,
     salePrice: String(variant.price ?? p.price ?? '0'),
     stock: String(variant.stock ?? '0'),
+    imageUrl: firstImageUrl(p),
   };
 }
 
@@ -58,13 +69,13 @@ export async function upsertProduct(connection: TiendanubeConnection, tnProduct:
   if (existing) {
     await storage.updateProduct(existing.id, {
       name: m.name, description: m.description, sku: m.sku, barcode: m.barcode,
-      salePrice: m.salePrice, stock: m.stock,
+      salePrice: m.salePrice, stock: m.stock, imageUrl: m.imageUrl,
     } as any);
   } else {
     await storage.createProduct({
       organizationId: connection.organizationId,
       name: m.name, description: m.description, sku: m.sku, barcode: m.barcode,
-      salePrice: m.salePrice, stock: m.stock,
+      salePrice: m.salePrice, stock: m.stock, imageUrl: m.imageUrl,
       productType: 'product',
       externalId: m.externalId, externalSource: 'tiendanube',
     } as any);

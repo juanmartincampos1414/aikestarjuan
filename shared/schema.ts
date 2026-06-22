@@ -1175,6 +1175,7 @@ export const products = pgTable("products", {
   purchaseDate: timestamp("purchase_date"),
   usefulLifeMonths: integer("useful_life_months"),
   currentValue: decimal("current_value", { precision: 15, scale: 2 }),
+  imageUrl: text("image_url"), // URL de imagen/miniatura (ej. desde Tiendanube)
   externalId: text("external_id"), // ID en plataforma externa (ej. Tiendanube product/variant)
   externalSource: text("external_source"), // 'tiendanube' | null
   isActive: boolean("is_active").notNull().default(true),

@@ -152,10 +152,27 @@ export default function TiendanubeCatalogPage() {
                     return (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/40">
                         <td className="px-4 py-2.5">
-                          <Link href="/products">
-                            <span className="font-medium hover:text-[#00C3DD] hover:underline cursor-pointer">{p.name}</span>
-                          </Link>
-                          {p.barcode && <div className="text-xs text-muted-foreground">Cód: {p.barcode}</div>}
+                          <div className="flex items-center gap-3">
+                            {p.imageUrl ? (
+                              <img
+                                src={p.imageUrl}
+                                alt={p.name}
+                                loading="lazy"
+                                className="h-10 w-10 rounded-md object-cover border bg-muted shrink-0"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-md border bg-muted flex items-center justify-center shrink-0">
+                                <Store className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div>
+                              <Link href="/products">
+                                <span className="font-medium hover:text-[#00C3DD] hover:underline cursor-pointer">{p.name}</span>
+                              </Link>
+                              {p.barcode && <div className="text-xs text-muted-foreground">Cód: {p.barcode}</div>}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{p.sku || '—'}</td>
                         <td className="px-4 py-2.5 text-right font-medium">{formatCurrencyAR(p.salePrice ?? '0', 'ARS')}</td>

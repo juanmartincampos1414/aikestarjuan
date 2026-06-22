@@ -757,6 +757,9 @@ app.use((req, res, next) => {
   const { createTiendanubeTables } = await import('./migrations/0042_tiendanube');
   await createTiendanubeTables();
 
+  const { addProductsImageUrlColumn } = await import('./migrations/0043_products_image_url');
+  await addProductsImageUrlColumn();
+
   // Task #282: barrer conversaciones vencidas (>30 min) cada 5 min para que
   // la tabla no crezca sin límite. El TTL ya se aplica en lecturas; esto
   // es solo limpieza física.
