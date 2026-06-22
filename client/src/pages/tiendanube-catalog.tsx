@@ -11,12 +11,27 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Store, Search, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
+import { Loader2, Store, Search, AlertTriangle, RefreshCw, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { useState } from 'react';
 import type { Product } from '@shared/schema';
 
+type SortKey = 'name' | 'salePrice' | 'stock';
+type SortDir = 'asc' | 'desc';
+
 export default function TiendanubeCatalogPage() {
   const [q, setQ] = useState('');
+  const [onlyLow, setOnlyLow] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
+  }
+  function isLow(p: any) {
+    const min = parseFloat(p.minStock ?? '0') || 0;
+    return min > 0 && (parseFloat(p.stock) || 0) <= min;
+  }
 
   const { data: allProducts = [], isLoading } = useQuery<Product[]>({
     queryKey: ['/api/products', 'tiendanube-catalog'],
@@ -36,11 +51,19 @@ export default function TiendanubeCatalogPage() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return products;
-    return products.filter((p: any) =>
-      (p.name || '').toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term),
-    );
-  }, [products, q]);
+    let list = products.filter((p: any) => {
+      const matchesTerm = !term || (p.name || '').toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term);
+      return matchesTerm && (!onlyLow || isLow(p));
+    });
+    const dir = sortDir === 'asc' ? 1 : -1;
+    list = [...list].sort((a: any, b: any) => {
+      if (sortKey === 'name') return dir * String(a.name || '').localeCompare(String(b.name || ''), 'es');
+      const av = parseFloat(a[sortKey]) || 0;
+      const bv = parseFloat(b[sortKey]) || 0;
+      return dir * (av - bv);
+    });
+    return list;
+  }, [products, q, onlyLow, sortKey, sortDir]);
 
   const totalStock = useMemo(
     () => products.reduce((acc: number, p: any) => acc + (parseFloat(p.stock) || 0), 0),
@@ -96,20 +119,28 @@ export default function TiendanubeCatalogPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="p-3 border-b">
-              <div className="relative max-w-xs">
+            <div className="p-3 border-b flex flex-wrap items-center gap-2 justify-between">
+              <div className="relative max-w-xs flex-1 min-w-[200px]">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input placeholder="Buscar por nombre o SKU…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
               </div>
+              <Button
+                variant={onlyLow ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setOnlyLow((v) => !v)}
+                className={onlyLow ? 'bg-orange-500 hover:bg-orange-600' : ''}
+              >
+                <AlertTriangle className="h-4 w-4 mr-1" /> Solo stock bajo
+              </Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-xs text-muted-foreground border-b">
+                <thead className="text-left text-xs text-muted-foreground border-b select-none">
                   <tr>
-                    <th className="px-4 py-2 font-medium">Producto</th>
+                    <SortHeader label="Producto" col="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     <th className="px-4 py-2 font-medium">SKU</th>
-                    <th className="px-4 py-2 font-medium text-right">Precio</th>
-                    <th className="px-4 py-2 font-medium text-right">Stock</th>
+                    <SortHeader label="Precio" col="salePrice" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortHeader label="Stock" col="stock" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     <th className="px-4 py-2 font-medium">Estado</th>
                   </tr>
                 </thead>
@@ -121,7 +152,9 @@ export default function TiendanubeCatalogPage() {
                     return (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/40">
                         <td className="px-4 py-2.5">
-                          <div className="font-medium">{p.name}</div>
+                          <Link href="/products">
+                            <span className="font-medium hover:text-[#00C3DD] hover:underline cursor-pointer">{p.name}</span>
+                          </Link>
                           {p.barcode && <div className="text-xs text-muted-foreground">Cód: {p.barcode}</div>}
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{p.sku || '—'}</td>
@@ -145,5 +178,27 @@ export default function TiendanubeCatalogPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+// Encabezado de columna ordenable.
+function SortHeader({ label, col, align = 'left', sortKey, sortDir, onSort }: {
+  label: string; col: SortKey; align?: 'left' | 'right';
+  sortKey: SortKey; sortDir: SortDir; onSort: (c: SortKey) => void;
+}) {
+  const active = sortKey === col;
+  return (
+    <th className={`px-4 py-2 font-medium ${align === 'right' ? 'text-right' : ''}`}>
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className={`inline-flex items-center gap-1 hover:text-foreground ${align === 'right' ? 'flex-row-reverse' : ''} ${active ? 'text-foreground' : ''}`}
+      >
+        {label}
+        {active
+          ? (sortDir === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)
+          : <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />}
+      </button>
+    </th>
   );
 }
