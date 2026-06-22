@@ -40,7 +40,8 @@ import {
   AlertTriangle,
   CreditCard,
   RefreshCw,
-  Landmark
+  Landmark,
+  Store
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -452,6 +453,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: 'Clientes', href: '/clients', icon: Users2, disabled: true },
         { name: 'Proveedores', href: '/suppliers', icon: Briefcase, disabled: true },
         { name: 'Productos/Activos', href: '/products', icon: Package, disabled: true },
+        { name: 'Tiendanube', href: '/tiendanube-catalogo', icon: Store, disabled: true },
         { name: 'Presupuestos', href: '/office?tab=quotes', icon: ClipboardList, disabled: true },
         { name: 'RR.HH', href: '/hr', icon: User, disabled: true },
         { name: 'Impuestos', href: '/impuestos', icon: Landmark, disabled: true },
@@ -461,6 +463,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Clientes', href: '/clients', icon: Users2 },
       { name: 'Proveedores', href: '/suppliers', icon: Briefcase },
       { name: 'Productos/Activos', href: '/products', icon: Package },
+      { name: 'Tiendanube', href: '/tiendanube-catalogo', icon: Store },
       { name: 'Presupuestos', href: '/office?tab=quotes', icon: ClipboardList },
       { name: 'RR.HH', href: '/hr', icon: User },
       // Facturas e Impuestos: ocultos sólo cuando la org es Personal Y el plan
