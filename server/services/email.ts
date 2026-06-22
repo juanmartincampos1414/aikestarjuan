@@ -11,8 +11,12 @@ export function getAppBaseUrl(): string {
   if (devDomain && process.env.NODE_ENV === 'development') {
     return `https://${devDomain}`;
   }
-  
-  // Production always uses aikestar.net
+
+  // URL pública de la app (los links de los emails apuntan acá). Configurable
+  // por APP_BASE_URL; si no, deriva de APP_DOMAIN; por último, aikestar.net.
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, '');
+  const domain = process.env.APP_DOMAIN?.replace(/^\./, '');
+  if (domain) return `https://${domain}`;
   return 'https://aikestar.net';
 }
 
