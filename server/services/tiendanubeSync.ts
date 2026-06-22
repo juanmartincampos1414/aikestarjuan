@@ -12,6 +12,7 @@ import { accounts, transactions, type TiendanubeConnection } from '@shared/schem
 import { storage } from '../storage';
 import { resolveClient, type ExternalCustomer } from './tiendanubeClientMatching';
 import * as store from './tiendanubeStore';
+import { decrementStockForOrder } from './tiendanubeProductSync';
 
 // Extrae el gateway/medio de pago del pedido de Tiendanube.
 export function extractGateway(order: any): string {
@@ -113,6 +114,14 @@ export async function processOrder(connection: TiendanubeConnection, order: any)
       transactionId: tx.id, clientId: match.clientId ?? null, status: 'synced',
       totalAmount: String(order.total ?? '0'), currency: order.currency || 'ARS', gateway, rawSnapshot: order,
     });
+  }
+
+  // Stock: descuenta los productos vendidos (atómico + auditoría de movimientos).
+  // Idempotente porque processOrder no re-entra para un pedido ya vinculado.
+  try {
+    await decrementStockForOrder(connection, order, tx.id);
+  } catch (e: any) {
+    console.error('[Tiendanube] error descontando stock:', e?.message || e);
   }
 
   await storage.createAuditLog({

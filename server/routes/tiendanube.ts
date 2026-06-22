@@ -10,10 +10,14 @@ import { encryptToken, decryptToken } from '../lib/tiendanubeCrypto';
 import { getAppBaseUrl } from '../lib/mercadopago';
 import * as store from '../services/tiendanubeStore';
 import { processOrder, processOrderCancelled } from '../services/tiendanubeSync';
+import { processProductWebhook, syncCatalog, getSyncProgress } from '../services/tiendanubeProductSync';
 import { type PlanType } from '@shared/schema';
 
 const ALLOWED_PLANS: PlanType[] = ['team', 'business', 'enterprise'];
-const WEBHOOK_EVENTS = ['order/created', 'order/paid', 'order/cancelled'];
+const WEBHOOK_EVENTS = [
+  'order/created', 'order/paid', 'order/cancelled',
+  'product/created', 'product/updated', 'product/deleted',
+];
 
 // ¿La org tiene plan habilitado para Tiendanube?
 async function orgHasAccess(organizationId: string): Promise<boolean> {
@@ -174,6 +178,26 @@ export function registerTiendanubeRoutes(app: Express): void {
     } catch { res.status(500).json({ message: 'Error resolviendo' }); }
   });
 
+  // ── Sincronización de catálogo (import inicial / re-sync manual) ────────────
+  app.post('/api/tiendanube/sync/catalog', requireAuth, async (req: any, res: Response) => {
+    try {
+      if (!(await isOwner(req.userId, req.organizationId))) return res.status(403).json({ message: 'Solo el propietario puede sincronizar el catálogo.' });
+      const conn = await store.getConnectionByOrg(req.organizationId);
+      if (!conn) return res.status(400).json({ message: 'No hay tienda conectada' });
+      // Corre en background; el progreso se consulta aparte.
+      syncCatalog(conn).catch((e) => console.error('[Tiendanube] syncCatalog:', e?.message || e));
+      res.json({ started: true });
+    } catch { res.status(500).json({ message: 'No se pudo iniciar la sincronización' }); }
+  });
+
+  app.get('/api/tiendanube/sync/progress', requireAuth, async (req: any, res: Response) => {
+    try {
+      const conn = await store.getConnectionByOrg(req.organizationId);
+      if (!conn) return res.json({ status: 'idle', total: 0, done: 0 });
+      res.json(getSyncProgress(conn.id));
+    } catch { res.status(500).json({ message: 'Error' }); }
+  });
+
   // ── Logs de webhooks ────────────────────────────────────────────────────────
   app.get('/api/tiendanube/logs', requireAuth, async (req: any, res: Response) => {
     try { res.json({ logs: await store.getWebhookLogs(req.organizationId) }); }
@@ -220,6 +244,8 @@ export function registerTiendanubeRoutes(app: Express): void {
           } else {
             await processOrder(conn, order);
           }
+        } else if (event.startsWith('product/')) {
+          await processProductWebhook(conn, event, resourceId);
         }
         await store.markWebhookEvent(conn.id, event, resourceId, 'processed');
         await store.updateConnection(conn.id, { lastSyncAt: new Date(), lastError: null });

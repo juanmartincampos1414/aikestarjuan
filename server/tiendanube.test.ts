@@ -60,3 +60,25 @@ test('parsing de pedidos: gateway, cliente y estado de pago', async () => {
   assert.equal(isPaid({ paid_at: '2026-06-01T00:00:00Z' }), true);
   assert.equal(isPaid({ payment_status: 'pending' }), false);
 });
+
+test('mapeo de producto Tiendanube → Aikestar (nombre localizado + variante)', async () => {
+  const { mapTiendanubeProduct } = await import('./services/tiendanubeProductSync');
+
+  const m = mapTiendanubeProduct({
+    id: 555,
+    name: { es: 'Remera Oversize', en: 'Oversize Tee' },
+    description: { es: 'Algodón' },
+    variants: [{ sku: 'REM-01', barcode: '779000', price: '15999.00', stock: 7 }],
+  });
+  assert.equal(m.externalId, '555');
+  assert.equal(m.name, 'Remera Oversize');
+  assert.equal(m.sku, 'REM-01');
+  assert.equal(m.salePrice, '15999.00');
+  assert.equal(m.stock, '7');
+
+  // Sin variantes ni nombre localizado → defaults seguros
+  const m2 = mapTiendanubeProduct({ id: 9, name: 'Plano', variants: [] });
+  assert.equal(m2.name, 'Plano');
+  assert.equal(m2.stock, '0');
+  assert.equal(m2.sku, null);
+});

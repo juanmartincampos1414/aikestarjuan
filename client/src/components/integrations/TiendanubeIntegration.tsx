@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Loader2, Store, Link2, AlertTriangle, CheckCircle2, RefreshCw, Unplug, ExternalLink } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Store, Link2, AlertTriangle, CheckCircle2, RefreshCw, Unplug, ExternalLink, PackageSearch } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 interface TnStatus {
   enabled: boolean;
@@ -145,8 +147,68 @@ export function TiendanubeIntegration() {
 
       <TabsContent value="mapeo" className="pt-4"><PaymentMappings /></TabsContent>
       <TabsContent value="pendientes" className="pt-4"><PendingClients /></TabsContent>
-      <TabsContent value="config" className="pt-4"><WebhookLogs /></TabsContent>
+      <TabsContent value="config" className="pt-4 space-y-6">
+        <CatalogSync />
+        <WebhookLogs />
+      </TabsContent>
     </Tabs>
+  );
+}
+
+// ── Sincronización de catálogo con barra de progreso ──────────────────────────
+function CatalogSync() {
+  const { toast } = useToast();
+  const [progress, setProgress] = useState<{ status: string; total: number; done: number } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function poll() {
+    try {
+      const p = await fetchWithAuth('/tiendanube/sync/progress');
+      setProgress(p);
+      if (p.status !== 'running' && pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => { poll(); return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  async function start() {
+    try {
+      await fetchWithAuth('/tiendanube/sync/catalog', { method: 'POST' });
+      setProgress({ status: 'running', total: 0, done: 0 });
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(poll, 1500);
+      toast({ title: 'Sincronización iniciada' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message, variant: 'destructive' });
+    }
+  }
+
+  const running = progress?.status === 'running';
+  const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+
+  return (
+    <div className="space-y-3 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium text-sm flex items-center gap-2"><PackageSearch className="h-4 w-4" /> Catálogo de productos</div>
+          <p className="text-xs text-muted-foreground">Importá todos los productos de tu tienda. Se actualizan solos con cada cambio.</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={start} disabled={running}>
+          {running ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          {running ? 'Sincronizando…' : 'Sincronizar catálogo'}
+        </Button>
+      </div>
+      {progress && progress.status !== 'idle' && (
+        <div className="space-y-1">
+          <Progress value={running ? pct : (progress.status === 'done' ? 100 : pct)} />
+          <p className="text-xs text-muted-foreground">
+            {progress.status === 'done' ? `✓ ${progress.done} productos sincronizados.`
+              : progress.status === 'error' ? 'Hubo un error en la sincronización.'
+              : `${progress.done} / ${progress.total} productos…`}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 

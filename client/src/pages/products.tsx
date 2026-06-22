@@ -274,7 +274,7 @@ function PricingCalculator({ formInstance }: { formInstance: UseFormReturn<Produ
   );
 }
 
-function ProductFormFields({ formInstance }: { formInstance: any }) {
+function ProductFormFields({ formInstance, locked = false }: { formInstance: any; locked?: boolean }) {
   const currentType = useWatch({ control: formInstance.control, name: 'productType' });
   const isProduct = currentType === 'product';
   const isAsset = currentType === 'asset';
@@ -288,6 +288,11 @@ function ProductFormFields({ formInstance }: { formInstance: any }) {
   });
   return (
     <>
+      {locked && (
+        <div className="rounded-lg border border-[#00C3DD]/40 bg-[#00C3DD]/10 px-3 py-2 text-xs text-[#0891b2]">
+          Este producto se sincroniza desde <strong>Tiendanube</strong>. El nombre, SKU, precio y stock se administran en tu tienda online y no se pueden editar acá.
+        </div>
+      )}
       <FormField
         control={formInstance.control}
         name="name"
@@ -295,7 +300,7 @@ function ProductFormFields({ formInstance }: { formInstance: any }) {
           <FormItem>
             <FormLabel>Nombre *</FormLabel>
             <FormControl>
-              <Input placeholder="Nombre del producto" {...field} data-testid="input-product-name" />
+              <Input placeholder="Nombre del producto" {...field} disabled={locked} data-testid="input-product-name" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -347,7 +352,7 @@ function ProductFormFields({ formInstance }: { formInstance: any }) {
             <FormItem>
               <FormLabel>SKU</FormLabel>
               <FormControl>
-                <Input placeholder="SKU-001" {...field} data-testid="input-product-sku" />
+                <Input placeholder="SKU-001" {...field} disabled={locked} data-testid="input-product-sku" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -360,7 +365,7 @@ function ProductFormFields({ formInstance }: { formInstance: any }) {
             <FormItem>
               <FormLabel>Codigo de barras</FormLabel>
               <FormControl>
-                <Input placeholder="1234567890123" {...field} data-testid="input-product-barcode" />
+                <Input placeholder="1234567890123" {...field} disabled={locked} data-testid="input-product-barcode" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -460,7 +465,7 @@ function ProductFormFields({ formInstance }: { formInstance: any }) {
             <FormItem>
               <FormLabel>Precio de venta</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="0.00" {...field} data-testid="input-product-price" />
+                <Input type="number" step="0.01" placeholder="0.00" {...field} disabled={locked} data-testid="input-product-price" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -509,7 +514,7 @@ function ProductFormFields({ formInstance }: { formInstance: any }) {
                   <FormItem>
                     <FormLabel>Stock actual</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="0" {...field} data-testid="input-product-stock" />
+                      <Input type="number" step="0.01" placeholder="0" {...field} disabled={locked} data-testid="input-product-stock" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2010,6 +2015,15 @@ export default function ProductsPage() {
                       <Badge variant="outline" className={PRODUCT_TYPE_BADGE_CLASS[pType]}>
                         {PRODUCT_TYPE_LABELS[pType]}
                       </Badge>
+                      {(product as any).externalSource === 'tiendanube' && (
+                        <Badge
+                          variant="outline"
+                          className="text-[#00C3DD] border-[#00C3DD]/40 bg-[#00C3DD]/10 text-xs"
+                          title="Producto sincronizado desde Tiendanube. Algunos campos se administran en tu tienda online."
+                        >
+                          Tiendanube
+                        </Badge>
+                      )}
                       {product.sku && (
                         <CardDescription>SKU: {product.sku}</CardDescription>
                       )}
@@ -2313,7 +2327,7 @@ export default function ProductsPage() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <ProductFormFields formInstance={editForm} />
+              <ProductFormFields formInstance={editForm} locked={(editProduct as any)?.externalSource === 'tiendanube'} />
               <DialogFooter>
                 <Button type="submit" disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
