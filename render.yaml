@@ -38,6 +38,17 @@ services:
         sync: false                    # Access Token de MercadoPago (secreto)
       # - key: MP_WEBHOOK_SECRET       # opcional: validación de firma del webhook
       #   sync: false
+      # --- Tiendanube (integración con tienda online) ---
+      - key: TIENDANUBE_ENABLED
+        value: "true"
+      - key: VITE_TIENDANUBE_ENABLED
+        value: "true"
+      - key: TIENDANUBE_CLIENT_ID
+        sync: false                    # client_id de la app en Tiendanube Partners
+      - key: TIENDANUBE_CLIENT_SECRET
+        sync: false                    # client_secret (secreto)
+      - key: TIENDANUBE_ENCRYPTION_KEY
+        sync: false                    # 32 bytes base64 para cifrar los tokens: `openssl rand -base64 32`
       # --- Opcionales (dejar sin valor hasta que tengas las claves) ---
       # - key: AI_INTEGRATIONS_GEMINI_API_KEY   # solo transcripción de audio de WhatsApp
       #   sync: false

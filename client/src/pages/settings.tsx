@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { User, Building, Save, Pencil, Trash2, Check, X, AlertTriangle, AlertCircle, HelpCircle, Shield, Lock, Eye, EyeOff, FileText, KeyRound, CreditCard, ArrowLeftRight, ArrowRight, Users, Truck, Package, BarChart3, Sparkles, UserPlus, Settings, Send, MessageCircle, CheckCircle, Tags, Plus, TrendingUp, TrendingDown, Clock, RefreshCw, Mail, Headphones, Repeat, Smartphone, LayoutDashboard, CalendarClock, Calendar, BookOpen, Warehouse, HeartPulse, Download, Bell, ClipboardList, Crown, History, FolderArchive, RotateCcw } from 'lucide-react';
+import { User, Building, Save, Pencil, Trash2, Check, X, AlertTriangle, AlertCircle, HelpCircle, Shield, Lock, Eye, EyeOff, FileText, KeyRound, CreditCard, ArrowLeftRight, ArrowRight, Users, Truck, Package, BarChart3, Sparkles, UserPlus, Settings, Send, MessageCircle, CheckCircle, Tags, Plus, TrendingUp, TrendingDown, Clock, RefreshCw, Mail, Headphones, Repeat, Smartphone, LayoutDashboard, CalendarClock, Calendar, BookOpen, Warehouse, HeartPulse, Download, Bell, ClipboardList, Crown, History, FolderArchive, RotateCcw, Store } from 'lucide-react';
 import TeamPage from './team';
 import AuditLogsPage from './audit-logs';
 import CountryPhoneInput from '@/components/CountryPhoneInput';
@@ -32,6 +32,7 @@ import ProfitabilityCodesSection from '@/components/ProfitabilityCodesSection';
 import PaymentMethodsSection from '@/components/PaymentMethodsSection';
 import { UserProfilePicker, getProfileIconByKey } from '@/components/UserProfilePicker';
 import { fetchWithAuth, categoryAPI } from '@/lib/api';
+import { TiendanubeIntegration } from '@/components/integrations/TiendanubeIntegration';
 import { FEATURE_FLAGS } from '@/lib/constants';
 
 const userProfileSchema = z.object({
@@ -1685,6 +1686,18 @@ export default function SettingsPage() {
         }
         setLocation('/settings', { replace: true });
       }, 100);
+    }
+    if (tab === 'integrations') {
+      setTimeout(() => {
+        const t = document.querySelector('[data-testid="accordion-integrations"]') as HTMLButtonElement;
+        if (t) {
+          const isOpen = t.getAttribute('data-state') === 'open';
+          if (!isOpen) t.click();
+          t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        // Conservamos ?tiendanube=connected/error si vino del callback OAuth.
+        if (!params.get('tiendanube')) setLocation('/settings', { replace: true });
+      }, 150);
     }
     if (tab === 'audit') {
       setTimeout(() => {
@@ -3771,6 +3784,25 @@ export default function SettingsPage() {
                     </a>
                   </div>
                 </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="integrations" className="border rounded-xl px-6 bg-card shadow-sm">
+            <AccordionTrigger className="hover:no-underline py-5" data-testid="accordion-integrations">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Store className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-base">Integraciones</p>
+                  <p className="text-sm text-muted-foreground font-normal">Conectá tu tienda online (Tiendanube)</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-6">
+              <div className="pt-2">
+                <TiendanubeIntegration />
               </div>
             </AccordionContent>
           </AccordionItem>

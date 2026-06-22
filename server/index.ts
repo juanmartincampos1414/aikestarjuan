@@ -18,6 +18,7 @@ import { startInactiveAccountCleanup } from "./services/inactiveAccountCleanup";
 import { startCancelledAccountCleanup } from "./services/cancelledAccountCleanup";
 import { startSubscriptionBillingCron } from "./services/subscriptionBilling";
 import { startMrrSnapshotCron } from "./services/mrrSnapshot";
+import { startTiendanubeReconcileCron } from "./services/tiendanubeReconcileCron";
 import { runOneTimeCleanup } from "./services/oneTimeCleanup";
 import { reportSystemError } from "./services/errorAlerts";
 // Note: stripe-replit-sync is imported dynamically only in development mode
@@ -471,6 +472,9 @@ function setupCSRFRoutes() {
       if (req.path.startsWith('/api/mercadopago/')) {
         return next();
       }
+      if (req.path === '/api/tiendanube/webhook') {
+        return next();
+      }
       if (req.path.startsWith('/api/whatsapp/')) {
         return next();
       }
@@ -750,6 +754,9 @@ app.use((req, res, next) => {
   const { addMpSubscriptionIdColumns } = await import('./migrations/0041_mp_subscription_id');
   await addMpSubscriptionIdColumns();
 
+  const { createTiendanubeTables } = await import('./migrations/0042_tiendanube');
+  await createTiendanubeTables();
+
   // Task #282: barrer conversaciones vencidas (>30 min) cada 5 min para que
   // la tabla no crezca sin límite. El TTL ya se aplica en lecturas; esto
   // es solo limpieza física.
@@ -777,6 +784,7 @@ app.use((req, res, next) => {
       startCancelledAccountCleanup();
       startSubscriptionBillingCron();
       startMrrSnapshotCron();
+      startTiendanubeReconcileCron();
       runOneTimeCleanup().catch(err => console.error('[Cleanup] Error:', err.message));
       backfillExpenseSubtypes().catch(err => console.error('[Backfill] Error:', err.message));
     },

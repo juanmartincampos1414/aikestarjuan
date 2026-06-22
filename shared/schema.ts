@@ -574,6 +574,8 @@ export const transactions = pgTable("transactions", {
   recurrenceTotalInstallments: integer("recurrence_total_installments"),
   recurrenceCurrentInstallment: integer("recurrence_current_installment"),
   expenseSubtype: text("expense_subtype"),
+  externalId: text("external_id"), // ID del pedido en plataforma externa (ej. Tiendanube)
+  externalSource: text("external_source"), // 'tiendanube' | null
   createdVia: text("created_via").default("web"),
   invoiceNetAmount: decimal("invoice_net_amount", { precision: 15, scale: 2 }),
   invoiceIvaAmount: decimal("invoice_iva_amount", { precision: 15, scale: 2 }),
@@ -921,6 +923,8 @@ export const clients = pgTable("clients", {
   ivaCondition: text("iva_condition"), // 'responsable_inscripto' | 'monotributo' | 'exento' | 'consumidor_final' (used for invoice doc-type selection)
   notes: text("notes"),
   clientType: text("client_type"),
+  externalId: text("external_id"), // ID en plataforma externa (ej. Tiendanube)
+  externalSource: text("external_source"), // 'tiendanube' | null
   // Subscription fields (only relevant when clientType = 'suscriptores')
   subscriberPlanId: varchar("subscriber_plan_id"),
   subscriberQuantity: integer("subscriber_quantity"),
@@ -1171,6 +1175,8 @@ export const products = pgTable("products", {
   purchaseDate: timestamp("purchase_date"),
   usefulLifeMonths: integer("useful_life_months"),
   currentValue: decimal("current_value", { precision: 15, scale: 2 }),
+  externalId: text("external_id"), // ID en plataforma externa (ej. Tiendanube product/variant)
+  externalSource: text("external_source"), // 'tiendanube' | null
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -2676,3 +2682,132 @@ export interface MonthlyAcquisitionSpend {
   amountArs: number;
   source: 'manual' | 'auto';
 }
+
+// =============================================================================
+// INTEGRACIÓN TIENDANUBE
+// =============================================================================
+
+export const TIENDANUBE_CONNECTION_STATUSES = ['connected', 'disconnected', 'error'] as const;
+export type TiendanubeConnectionStatus = typeof TIENDANUBE_CONNECTION_STATUSES[number];
+
+// Conexión de una tienda Tiendanube por organización (1:1).
+export const tiendanubeConnections = pgTable("tiendanube_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  storeId: text("store_id").notNull(), // id de la tienda en Tiendanube
+  storeName: text("store_name"),
+  storeUrl: text("store_url"),
+  accessTokenEncrypted: text("access_token_encrypted").notNull(), // AES-GCM
+  scope: text("scope"),
+  status: text("status").notNull().default("connected"), // TiendanubeConnectionStatus
+  connectedByUserId: varchar("connected_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  connectedAt: timestamp("connected_at").defaultNow(),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgUnique: uniqueIndex("tiendanube_connections_org_unique").on(t.organizationId),
+}));
+
+export const insertTiendanubeConnectionSchema = createInsertSchema(tiendanubeConnections).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertTiendanubeConnection = z.infer<typeof insertTiendanubeConnectionSchema>;
+export type TiendanubeConnection = typeof tiendanubeConnections.$inferSelect;
+
+// Mapeo de medios de pago de Tiendanube → cuenta destino en Aikestar.
+export const tiendanubePaymentMappings = pgTable("tiendanube_payment_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id").notNull().references(() => tiendanubeConnections.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  gatewayName: text("gateway_name").notNull(), // nombre/id del medio de pago en Tiendanube
+  accountId: varchar("account_id").references(() => accounts.id, { onDelete: "set null" }),
+  paymentMethodId: varchar("payment_method_id").references(() => paymentMethods.id, { onDelete: "set null" }),
+  autoDetected: boolean("auto_detected").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  connGatewayUnique: uniqueIndex("tiendanube_pm_conn_gateway_unique").on(t.connectionId, t.gatewayName),
+}));
+
+export const insertTiendanubePaymentMappingSchema = createInsertSchema(tiendanubePaymentMappings).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertTiendanubePaymentMapping = z.infer<typeof insertTiendanubePaymentMappingSchema>;
+export type TiendanubePaymentMapping = typeof tiendanubePaymentMappings.$inferSelect;
+
+export const TIENDANUBE_WEBHOOK_STATUSES = ['received', 'processed', 'failed', 'skipped'] as const;
+
+// Eventos de webhook recibidos: idempotencia (unique conn+event+resource) + auditoría.
+export const tiendanubeWebhookEvents = pgTable("tiendanube_webhook_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id").references(() => tiendanubeConnections.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  event: text("event").notNull(), // 'order/paid' | 'order/created' | ...
+  externalResourceId: text("external_resource_id").notNull(), // id del pedido/producto
+  payloadHash: text("payload_hash"),
+  status: text("status").notNull().default("received"),
+  error: text("error"),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
+}, (t) => ({
+  dedupUnique: uniqueIndex("tiendanube_webhook_dedup_unique").on(t.connectionId, t.event, t.externalResourceId),
+}));
+
+export const insertTiendanubeWebhookEventSchema = createInsertSchema(tiendanubeWebhookEvents).omit({
+  id: true, receivedAt: true,
+});
+export type InsertTiendanubeWebhookEvent = z.infer<typeof insertTiendanubeWebhookEventSchema>;
+export type TiendanubeWebhookEvent = typeof tiendanubeWebhookEvents.$inferSelect;
+
+// Trazabilidad pedido Tiendanube ↔ transacción/cliente Aikestar (unique conn+order).
+export const tiendanubeOrderLinks = pgTable("tiendanube_order_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id").notNull().references(() => tiendanubeConnections.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  externalOrderId: text("external_order_id").notNull(),
+  orderNumber: text("order_number"),
+  transactionId: varchar("transaction_id").references(() => transactions.id, { onDelete: "set null" }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("synced"), // 'synced' | 'cancelled'
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }),
+  currency: text("currency"),
+  gateway: text("gateway"),
+  rawSnapshot: jsonb("raw_snapshot"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  connOrderUnique: uniqueIndex("tiendanube_order_conn_order_unique").on(t.connectionId, t.externalOrderId),
+}));
+
+export const insertTiendanubeOrderLinkSchema = createInsertSchema(tiendanubeOrderLinks).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertTiendanubeOrderLink = z.infer<typeof insertTiendanubeOrderLinkSchema>;
+export type TiendanubeOrderLink = typeof tiendanubeOrderLinks.$inferSelect;
+
+export const TIENDANUBE_MATCH_STATUSES = ['pending', 'auto_linked', 'approved', 'rejected'] as const;
+
+// Cola de revisión de clientes (matching ambiguo) + historial de decisiones.
+export const tiendanubeClientMatches = pgTable("tiendanube_client_matches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id").notNull().references(() => tiendanubeConnections.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  externalCustomerId: text("external_customer_id").notNull(),
+  externalData: jsonb("external_data"), // { name, email, doc, phone }
+  candidateClientId: varchar("candidate_client_id").references(() => clients.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("pending"),
+  resolvedClientId: varchar("resolved_client_id").references(() => clients.id, { onDelete: "set null" }),
+  resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  connCustomerIdx: index("tiendanube_match_conn_customer_idx").on(t.connectionId, t.externalCustomerId),
+}));
+
+export const insertTiendanubeClientMatchSchema = createInsertSchema(tiendanubeClientMatches).omit({
+  id: true, createdAt: true,
+});
+export type InsertTiendanubeClientMatch = z.infer<typeof insertTiendanubeClientMatchSchema>;
+export type TiendanubeClientMatch = typeof tiendanubeClientMatches.$inferSelect;
