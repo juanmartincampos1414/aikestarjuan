@@ -154,7 +154,7 @@ function getAppBaseUrl(): string {
   if (devDomain && process.env.NODE_ENV === 'development') {
     return `https://${devDomain}`;
   }
-  return 'https://aikestar.net';
+  return 'https://app.aikestar.com';
 }
 
 interface WeeklyCommitment {

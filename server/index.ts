@@ -78,13 +78,13 @@ app.use((req, res, next) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Canonical-domain redirect + robots policy (Task: blindar dominio aikestar.net)
+// Canonical-domain redirect + robots policy (Task: blindar dominio app.aikestar.com)
 //
-// Why: the Replit deployment is hosted at aikestar.net (custom domain), but
+// Why: the Replit deployment is hosted at app.aikestar.com (custom domain), but
 // the deployment's *.replit.app URL AND the workspace preview's *.replit.dev
 // URL also serve the exact same app from the same database. If a user lands
-// on either of those instead of aikestar.net:
-//   - Session cookies (scoped to .aikestar.net) silently fail to persist.
+// on either of those instead of app.aikestar.com:
+//   - Session cookies (scoped to .app.aikestar.com) silently fail to persist.
 //   - Marketing pixels (Meta, GTM, Metricool) fire under the wrong hostname,
 //     so conversions never get attributed in Ads Manager.
 //   - The user sees a scary opaque subdomain in the address bar — for a
@@ -113,7 +113,7 @@ const REDIRECT_EXEMPT_PREFIXES = [
 ];
 
 function getCanonicalHost(): string | null {
-  const raw = process.env.APP_DOMAIN; // e.g. ".aikestar.net"
+  const raw = process.env.APP_DOMAIN; // e.g. ".app.aikestar.com"
   if (!raw) return null;
   // Strip leading dot used for cookie domain ("." prefix is a cookie-only convention).
   return raw.replace(/^\./, '').toLowerCase() || null;
@@ -345,15 +345,15 @@ async function recreateSessionTable(client: any) {
 // Session middleware setup function - MUST be called after ensureSessionTableSchema
 function setupSessionMiddleware() {
   // Check if we're in production with custom domain
-  // APP_DOMAIN env var should be set to '.aikestar.net' in production
+  // APP_DOMAIN env var should be set to '.app.aikestar.com' in production
   const isProduction = process.env.NODE_ENV === "production";
   const hasLiveStripe = !!process.env.STRIPE_LIVE_SECRET_KEY;
-  const appDomain = process.env.APP_DOMAIN; // e.g., '.aikestar.net'
+  const appDomain = process.env.APP_DOMAIN; // e.g., '.app.aikestar.com'
   
   const isProductionDeployment = isProduction && !!appDomain;
 
   // Cookie attributes:
-  //   - Production (aikestar.net): Secure + SameSite=Lax. First-party only,
+  //   - Production (app.aikestar.com): Secure + SameSite=Lax. First-party only,
   //     better CSRF posture.
   //   - Dev workspace (*.picard.replit.dev): Secure + SameSite=None. The
   //     workspace renders our app inside a cross-origin iframe (replit.com

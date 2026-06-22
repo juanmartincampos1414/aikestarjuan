@@ -3752,12 +3752,12 @@ export default function SettingsPage() {
                       ai@aikestar.com
                     </a>
                     <a 
-                      href="mailto:soporte@aikestar.net" 
+                      href="mailto:ai@aikestar.com" 
                       className="flex items-center gap-2.5 text-sm text-primary hover:underline font-medium"
                       data-testid="link-email-support-net"
                     >
                       <Mail className="h-4 w-4 shrink-0" />
-                      soporte@aikestar.net
+                      ai@aikestar.com
                     </a>
                     <a 
                       href="https://wa.me/541153874843" 

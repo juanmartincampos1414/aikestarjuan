@@ -9,7 +9,7 @@ export const TERMS_TITLE =
 export const TERMS_LAST_UPDATED = "Enero 2026";
 
 export const TERMS_INTRO =
-  'Aikestar SRL (la "Sociedad") pone a disposición de sus usuarios una plataforma tecnológica accesible a través de aikestar.net destinada a la creación, administración y utilización de asistentes virtuales, automatizaciones, herramientas de inteligencia artificial y demás funcionalidades digitales asociadas con el propósito de organizar finanzas.';
+  'Aikestar SRL (la "Sociedad") pone a disposición de sus usuarios una plataforma tecnológica accesible a través de app.aikestar.com destinada a la creación, administración y utilización de asistentes virtuales, automatizaciones, herramientas de inteligencia artificial y demás funcionalidades digitales asociadas con el propósito de organizar finanzas.';
 
 export const TERMS_SECTIONS: TermsSection[] = [
   {
@@ -37,7 +37,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
       "3.1 La contratación tendrá duración indeterminada mientras exista una suscripción activa.",
       "3.2 El Cliente podrá solicitar la cancelación del Servicio en cualquier momento.",
       "3.3 La Sociedad podrá modificar estos términos por razones operativas, tecnológicas o legales.",
-      "3.4 Las modificaciones serán publicadas en aikestar.net.",
+      "3.4 Las modificaciones serán publicadas en app.aikestar.com.",
       "3.5 La Sociedad podrá finalizar la prestación del Servicio notificando al Cliente con antelación razonable.",
     ],
   },

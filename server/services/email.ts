@@ -13,11 +13,11 @@ export function getAppBaseUrl(): string {
   }
 
   // URL pública de la app (los links de los emails apuntan acá). Configurable
-  // por APP_BASE_URL; si no, deriva de APP_DOMAIN; por último, aikestar.net.
+  // por APP_BASE_URL; si no, deriva de APP_DOMAIN; por último, app.aikestar.com.
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, '');
   const domain = process.env.APP_DOMAIN?.replace(/^\./, '');
   if (domain) return `https://${domain}`;
-  return 'https://aikestar.net';
+  return 'https://app.aikestar.com';
 }
 
 async function getCredentials() {
@@ -232,7 +232,7 @@ export async function sendPasswordChangeEmail(userEmail: string, userName: strin
         <strong>⚠️ Si no realizaste este cambio, contactanos inmediatamente.</strong>
       </p>
       <div style="text-align: center; margin: 32px 0;">
-        <a href="mailto:soporte@aikestar.net" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="mailto:ai@aikestar.com" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Contactar Soporte
         </a>
       </div>
@@ -300,7 +300,7 @@ export async function sendSubscriptionEmail(
         </a>
       </div>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Tenés preguntas? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Tenés preguntas? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -740,7 +740,7 @@ export async function sendPaymentFailedEmail(
         </a>
       </div>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Necesitás ayuda? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Necesitás ayuda? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -799,7 +799,7 @@ export async function sendInactiveAccountReminderEmail(
         </a>
       </div>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Tenés dudas? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Tenés dudas? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -885,7 +885,7 @@ export async function sendCancellationEmail(
         </a>
       </div>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Tenés preguntas o comentarios? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Tenés preguntas o comentarios? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -1036,7 +1036,7 @@ export async function sendPaymentReceiptEmail(
         Gracias por confiar en Aikestar para gestionar tus finanzas.
       </p>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Tenés preguntas? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Tenés preguntas? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -1120,7 +1120,7 @@ export async function sendPlanChangeEmail(
         </a>
       </div>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Tenés preguntas? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Tenés preguntas? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -1203,7 +1203,7 @@ ${message}
     `;
 
     await client.send({
-      to: 'soporte@aikestar.net',
+      to: 'ai@aikestar.com',
       from: { email: fromEmail, name: 'Aikestar Soporte' },
       replyTo: { email: effectiveReplyTo, name: userName },
       subject: `[Soporte] ${subject}`,
@@ -1439,7 +1439,7 @@ export async function sendCancelledDataReminderEmail(
         </a>
       </div>
       <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-        ¿Tenés preguntas? Escribinos a <a href="mailto:soporte@aikestar.net" style="color: #22d3ee;">soporte@aikestar.net</a>
+        ¿Tenés preguntas? Escribinos a <a href="mailto:ai@aikestar.com" style="color: #22d3ee;">ai@aikestar.com</a>
       </p>
     `;
 
@@ -1819,7 +1819,7 @@ export async function sendCreditNoteBadResponseAlertEmail(
         </a>
       </div>
       <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.6;">
-        Si necesitás confirmar si la nota de crédito quedó registrada en ARCA, escribinos a soporte@aikestar.net y la verificamos por vos. Si preferís reintentar directamente, podés hacerlo desde el detalle del movimiento.
+        Si necesitás confirmar si la nota de crédito quedó registrada en ARCA, escribinos a ai@aikestar.com y la verificamos por vos. Si preferís reintentar directamente, podés hacerlo desde el detalle del movimiento.
       </p>
     `;
 
@@ -1888,7 +1888,7 @@ export async function sendInvoiceBadResponseAlertEmail(
         </a>
       </div>
       <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.6;">
-        Si necesitás confirmar si la factura quedó registrada en ARCA, escribinos a soporte@aikestar.net y la verificamos por vos. Si preferís reintentar directamente, podés hacerlo desde el detalle del movimiento.
+        Si necesitás confirmar si la factura quedó registrada en ARCA, escribinos a ai@aikestar.com y la verificamos por vos. Si preferís reintentar directamente, podés hacerlo desde el detalle del movimiento.
       </p>
     `;
 

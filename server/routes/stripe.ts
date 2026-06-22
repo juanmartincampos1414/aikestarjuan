@@ -15,7 +15,7 @@ function getBaseUrl(): string {
     if (devDomain) return `https://${devDomain}`;
     return `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
   }
-  return 'https://aikestar.net';
+  return 'https://app.aikestar.com';
 }
 
 export function registerStripeRoutes(app: Express): void {

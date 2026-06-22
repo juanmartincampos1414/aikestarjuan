@@ -194,7 +194,7 @@ export function registerAuthRoutes(app: Express): void {
       
       const baseUrl = process.env.NODE_ENV === 'development'
         ? `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'https://aikestar.net';
+        : 'https://app.aikestar.com';
       
       const session = await stripe.checkout.sessions.create({
         customer: customer.id,
@@ -459,7 +459,7 @@ export function registerAuthRoutes(app: Express): void {
       const recoveredUser = await storage.getUser(userId);
       if (recoveredUser?.deletedAt) {
         return res.status(403).json({
-          message: 'Tu cuenta fue eliminada por inactividad. Contactanos a soporte@aikestar.net si querés reactivarla.',
+          message: 'Tu cuenta fue eliminada por inactividad. Contactanos a ai@aikestar.com si querés reactivarla.',
           code: 'ACCOUNT_DELETED',
         });
       }
@@ -489,7 +489,7 @@ export function registerAuthRoutes(app: Express): void {
       const organization = await storage.getOrganization(organizationId);
       
       // Clear old cookies first (same logic as login).
-      // Only clear with Domain=.aikestar.net in REAL production deployments — in dev
+      // Only clear with Domain=.app.aikestar.com in REAL production deployments — in dev
       // the browser is on *.picard.replit.dev and a domain-scoped clear is a no-op
       // that adds noise to the response (and previously confused the browser).
       const isProductionDeployment = process.env.NODE_ENV === 'production' && !!process.env.APP_DOMAIN;
@@ -720,7 +720,7 @@ export function registerAuthRoutes(app: Express): void {
 
       if (user?.deletedAt) {
         return res.status(403).json({
-          message: 'Tu cuenta fue eliminada por inactividad. Contactanos a soporte@aikestar.net si querés reactivarla.',
+          message: 'Tu cuenta fue eliminada por inactividad. Contactanos a ai@aikestar.com si querés reactivarla.',
           code: 'ACCOUNT_DELETED',
         });
       }
@@ -895,7 +895,7 @@ export function registerAuthRoutes(app: Express): void {
       // IMPORTANT: Must match the detection in server/index.ts:setupSessionMiddleware.
       // Previously used `STRIPE_LIVE_SECRET_KEY` as a signal which incorrectly flagged
       // the dev workspace as "production" (we keep live Stripe keys in dev for testing),
-      // causing this endpoint to emit Set-Cookie headers with Domain=.aikestar.net while
+      // causing this endpoint to emit Set-Cookie headers with Domain=.app.aikestar.com while
       // the browser was on *.picard.replit.dev — those cookies were rejected and the
       // user got bounced back to /login after a successful login.
       const isProductionDeployment = process.env.NODE_ENV === 'production' && !!process.env.APP_DOMAIN;

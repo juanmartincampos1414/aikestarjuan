@@ -1554,7 +1554,7 @@ ACCIONES QUE DEBEN HACERSE DESDE LA WEB:
 • Organizaciones
 • Miembros del equipo
 
-Ejemplo de respuesta: "Para crear cuentas te recomiendo hacerlo desde la app web en aikestar.net → es más seguro, más simple y tenés todas las opciones disponibles. Desde acá por WhatsApp podés registrar tus movimientos fácilmente 💰"
+Ejemplo de respuesta: "Para crear cuentas te recomiendo hacerlo desde la app web en app.aikestar.com → es más seguro, más simple y tenés todas las opciones disponibles. Desde acá por WhatsApp podés registrar tus movimientos fácilmente 💰"
 
 FORMATO:
 📊 Análisis | 💰 Cuentas | 💸 Gastos | 💵 Ingresos | 📈 Balance | 🟢🟡🔴 Salud`
@@ -2018,7 +2018,7 @@ export function registerWhatsAppRoutes(app: Express) {
       // Internal logs differentiate the two so support can still triage.
       const NEEDS_VERIFICATION_REPLY =
         `👋 ¡Hola! Para usar Aike por WhatsApp desde este número, vinculalo y verificalo.\n\n` +
-        `1. Ingresá a aikestar.net\n` +
+        `1. Ingresá a app.aikestar.com\n` +
         `2. Andá a Configuración → WhatsApp\n` +
         `3. Cargá tu número y completá la verificación con el código que te enviamos.\n\n` +
         `Una vez verificado, vas a poder registrar movimientos y consultar tus finanzas por acá.`;
@@ -2039,7 +2039,7 @@ export function registerWhatsAppRoutes(app: Express) {
       const organizations = await storage.getOrganizationsByUser(user.id);
       if (!organizations.length) {
         await sendWhatsAppMessage(From, 
-          `⚠️ Tu cuenta no tiene organizaciones. Ingresá a aikestar.net para crear una.`
+          `⚠️ Tu cuenta no tiene organizaciones. Ingresá a app.aikestar.com para crear una.`
         );
         return;
       }
@@ -2426,7 +2426,7 @@ export function registerWhatsAppRoutes(app: Express) {
         if (accounts.length === 0) {
           await sendWhatsAppMessage(
             From,
-            `📍 *${currentOrg.name}*\n\n⚠️ No tenés cuentas configuradas. Entrá a aikestar.net y creá una cuenta primero para que pueda registrar el ticket.`,
+            `📍 *${currentOrg.name}*\n\n⚠️ No tenés cuentas configuradas. Entrá a app.aikestar.com y creá una cuenta primero para que pueda registrar el ticket.`,
           );
           return;
         }
@@ -2595,7 +2595,7 @@ export function registerWhatsAppRoutes(app: Express) {
             `• "mi cuenta preferida es [nombre]"\n` +
             `• "para gastos usá categoría [nombre]"\n` +
             `• "siempre sin factura"\n\n` +
-            `O configurarlas desde aikestar.net → Configuración`
+            `O configurarlas desde app.aikestar.com → Configuración`
           );
         } else {
           let prefLines = '⚙️ *Tus preferencias:*\n\n';
@@ -2681,7 +2681,7 @@ export function registerWhatsAppRoutes(app: Express) {
         await resetConversation(user.id, organizationId!);
         await sendWhatsAppMessage(From, 
           `📅 Los movimientos futuros o recurrentes se configuran desde la web.\n\n` +
-          `Ingresá a *aikestar.net* para programarlos.\n\n` +
+          `Ingresá a *app.aikestar.com* para programarlos.\n\n` +
           `¿Querés registrar un movimiento de hoy?`
         );
         return;
@@ -3028,7 +3028,7 @@ export function registerWhatsAppRoutes(app: Express) {
                 `📍 *${currentOrg.name}*\n\n` +
                 `⚠️ No tenés cuentas en ${currencyName} en esta organización.\n\n` +
                 `Para registrar movimientos en ${currencyName}, primero creá una cuenta en esa moneda.\n\n` +
-                `👉 Entrá a *aikestar.net* → Cuentas → Nueva cuenta → Elegí ${newCurrency} como moneda`
+                `👉 Entrá a *app.aikestar.com* → Cuentas → Nueva cuenta → Elegí ${newCurrency} como moneda`
               );
               return;
             }
@@ -3493,7 +3493,7 @@ export function registerWhatsAppRoutes(app: Express) {
           if (accountsInCurrency.length === 0) {
             await sendWhatsAppMessage(From, 
               `⚠️ No tenés cuentas en ${currencyLabel} en *${currentOrg.name}*.\n\n` +
-              `Entrá a *aikestar.net* → Cuentas → Nueva cuenta para crear una.`
+              `Entrá a *app.aikestar.com* → Cuentas → Nueva cuenta para crear una.`
             );
             await resetConversation(user.id, organizationId!);
             return;
@@ -4148,7 +4148,7 @@ export function registerWhatsAppRoutes(app: Express) {
             `📍 *${currentOrg.name}*\n\n` +
             `⚠️ No tenés cuentas en ${currencyName} en esta organización.\n\n` +
             `Para registrar movimientos en ${currencyName}, primero tenés que crear una cuenta en esa moneda.\n\n` +
-            `👉 Entrá a *aikestar.net* → Cuentas → Nueva cuenta → Elegí ${detectedCurrency} como moneda`
+            `👉 Entrá a *app.aikestar.com* → Cuentas → Nueva cuenta → Elegí ${detectedCurrency} como moneda`
           );
           return;
         }
@@ -4289,7 +4289,7 @@ export function registerWhatsAppRoutes(app: Express) {
               `📍 *${currentOrg.name}*\n\n` +
               `⚠️ Mencionaste *${currencyName}* pero tu única cuenta (*${accounts[0].name}*) es en *${accountCurrency === 'USD' || accountCurrency === 'USD_CASH' ? 'dólares' : accountCurrency === 'EUR' ? 'euros' : 'pesos'}*.\n\n` +
               `Para registrar movimientos en ${currencyName}, primero creá una cuenta en esa moneda.\n\n` +
-              `👉 Entrá a *aikestar.net* → Cuentas → Nueva cuenta → Elegí ${normalizedDetected} como moneda`
+              `👉 Entrá a *app.aikestar.com* → Cuentas → Nueva cuenta → Elegí ${normalizedDetected} como moneda`
             );
             return;
           }
@@ -4400,7 +4400,7 @@ export function registerWhatsAppRoutes(app: Express) {
           // No accounts - can't proceed
           await sendWhatsAppMessage(From, 
             `⚠️ No tenés cuentas configuradas en *${currentOrg.name}*.\n\n` +
-            `Entrá a aikestar.net y creá una cuenta primero para poder registrar movimientos.`
+            `Entrá a app.aikestar.com y creá una cuenta primero para poder registrar movimientos.`
           );
         } else {
           // Multiple accounts - check if only one matches the currency

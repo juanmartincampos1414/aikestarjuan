@@ -628,7 +628,7 @@ export function registerOrganizationRoutes(app: Express): void {
           
           const baseUrl = process.env.NODE_ENV === 'development'
             ? `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0]}`
-            : 'https://aikestar.net';
+            : 'https://app.aikestar.com';
           
           // Create Checkout session for the new plan - user must pay before plan changes
           const checkoutSession = await stripe.checkout.sessions.create({

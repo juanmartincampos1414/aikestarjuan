@@ -1761,7 +1761,7 @@ REGLAS:
       if (sent) {
         res.json({ success: true, message: 'Tu mensaje fue enviado a soporte. Te responderemos pronto.' });
       } else {
-        res.status(500).json({ message: 'No se pudo enviar el mensaje. Intentá de nuevo o escribí directamente a soporte@aikestar.net' });
+        res.status(500).json({ message: 'No se pudo enviar el mensaje. Intentá de nuevo o escribí directamente a ai@aikestar.com' });
       }
     } catch (error: any) {
       console.error('Support email error:', error);
