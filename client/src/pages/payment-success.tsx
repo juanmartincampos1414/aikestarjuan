@@ -20,12 +20,17 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const sessionId = params.get('session_id');
+    // MercadoPago agrega preapproval_id al volver del checkout de suscripción.
+    const preapprovalId = params.get('preapproval_id');
     const plan = params.get('plan');
     const changed = params.get('changed');
 
     if (plan) setPlanName(plan);
 
-    if (sessionId) {
+    if (preapprovalId) {
+      setFlowType('signup');
+      validateMercadoPagoSignup(preapprovalId);
+    } else if (sessionId) {
       setFlowType('signup');
       validateSignup(sessionId);
     } else if (changed === 'true') {
@@ -43,6 +48,45 @@ export default function PaymentSuccessPage() {
     setTimeout(() => {
       window.location.replace(path);
     }, 3000);
+  }
+
+  // Red de seguridad para MercadoPago: al volver del checkout, consultamos el
+  // estado de la suscripción. El endpoint, si está "authorized", completa el
+  // alta de forma idempotente (no depende solo del webhook). Reintenta unas
+  // veces porque la autorización puede tardar unos segundos en propagarse.
+  async function validateMercadoPagoSignup(preapprovalId: string, attempt = 0) {
+    try {
+      const res = await fetch(`/api/mercadopago/subscription/${encodeURIComponent(preapprovalId)}`, {
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({} as any));
+
+      if (res.ok && data.status === 'authorized') {
+        // Cuenta creada. El usuario inicia sesión con su email y contraseña.
+        setStatus('success');
+        redirectAfterDelay('/login?registered=1');
+        return;
+      }
+
+      if (attempt < 6) {
+        setTimeout(() => validateMercadoPagoSignup(preapprovalId, attempt + 1), 2500);
+        return;
+      }
+
+      // Tras varios intentos sigue pendiente: el webhook la activará en breve.
+      // Mostramos un mensaje optimista e invitamos a iniciar sesión.
+      setStatus('success');
+      redirectAfterDelay('/login?registered=1');
+    } catch (err: any) {
+      if (attempt < 6) {
+        setTimeout(() => validateMercadoPagoSignup(preapprovalId, attempt + 1), 2500);
+        return;
+      }
+      setStatus('error');
+      setError(
+        'No pudimos confirmar el pago automáticamente. Si autorizaste la suscripción, tu cuenta se activará en unos minutos; probá iniciar sesión.',
+      );
+    }
   }
 
   async function validateSignup(sessionId: string) {
