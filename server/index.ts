@@ -468,6 +468,9 @@ function setupCSRFRoutes() {
       if (req.path.startsWith('/api/stripe/')) {
         return next();
       }
+      if (req.path.startsWith('/api/mercadopago/')) {
+        return next();
+      }
       if (req.path.startsWith('/api/whatsapp/')) {
         return next();
       }

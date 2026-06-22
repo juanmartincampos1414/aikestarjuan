@@ -481,39 +481,24 @@ export default function AuthPage({ initialTab }: { initialTab?: 'login' | 'regis
       return;
     }
     
-    // Check if products are loaded - if not, try to fetch them
-    if (!stripeProducts || stripeProducts.length === 0) {
-      if (isLoadingProducts) {
-        toast({
-          title: "Cargando",
-          description: "Estamos cargando la información de pago. Intentá de nuevo en unos segundos.",
-        });
-      } else {
-        toast({
-          title: "Error de conexión",
-          description: "No pudimos cargar los planes de pago. Recargá la página e intentá de nuevo.",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-    
-    // Find the priceId for the selected plan
-    const selectedProduct = stripeProducts.find(
-      (p: any) => p.metadata?.planType === selectedPlan
-    );
-    
-    if (!selectedProduct || !selectedProduct.prices?.[0]?.id) {
+    // Con Stripe necesitamos sus productos cargados; con MercadoPago el precio
+    // sale de PLAN_DETAILS (server) y no dependemos de Stripe. Solo bloqueamos
+    // si los productos siguen cargando (evita doble submit).
+    if ((!stripeProducts || stripeProducts.length === 0) && isLoadingProducts) {
       toast({
-        title: "Error",
-        description: "No se encontró el precio del plan seleccionado. Intenta de nuevo.",
-        variant: "destructive",
+        title: "Cargando",
+        description: "Estamos cargando la información de pago. Intentá de nuevo en unos segundos.",
       });
       return;
     }
     
-    const priceId = selectedProduct.prices[0].id;
-    
+    // priceId solo aplica al flujo Stripe. Con MercadoPago no hay productos de
+    // Stripe; el servidor usa planType. Por eso el priceId es opcional.
+    const selectedProduct = stripeProducts.find(
+      (p: any) => p.metadata?.planType === selectedPlan
+    );
+    const priceId: string | undefined = selectedProduct?.prices?.[0]?.id;
+
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/register', {

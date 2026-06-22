@@ -1,11 +1,12 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "../storage";
-import { PLAN_TYPES, type PlanType, COUNTRIES, COUNTRY_CURRENCY_MAP } from "@shared/schema";
+import { PLAN_TYPES, PLAN_DETAILS, PLAN_LABELS, type PlanType, COUNTRIES, COUNTRY_CURRENCY_MAP } from "@shared/schema";
 import { normalizePhoneInput, formatArgentineMobilePretty, maskPhoneForDisplay } from "@shared/phone";
 import bcrypt from "bcryptjs";
 import { sendWelcomeEmail, sendPasswordChangeEmail, sendPasswordResetEmail, sendPhoneLinkedConfirmationEmail } from "../services/email";
 import { requireAuth, requireAuthOnly, sanitizeError } from "./middleware";
 import { getUncachableStripeClient } from "../stripeClient";
+import { isMercadoPagoEnabled, createSubscription as createMpSubscription } from "../lib/mercadopago";
 
 import rateLimit from 'express-rate-limit';
 
@@ -39,7 +40,73 @@ export function registerAuthRoutes(app: Express): void {
       if (acceptTerms !== true) {
         return res.status(400).json({ message: 'Debes aceptar los Términos y Condiciones para registrarte' });
       }
-      
+
+      // ── Flujo MercadoPago (suscripción recurrente) ──────────────────────────
+      // Si MercadoPago está configurado, es la pasarela activa: creamos un
+      // pending_signup y una suscripción (preapproval) de MP, y devolvemos el
+      // init_point al que el cliente redirige. El alta se completa por webhook.
+      if (isMercadoPagoEnabled()) {
+        const planType = req.body.planType as PlanType | undefined;
+        if (!planType || !PLAN_TYPES.includes(planType)) {
+          return res.status(400).json({ message: 'Debes seleccionar un plan válido' });
+        }
+
+        const type = accountType === 'personal' ? 'personal' : 'business';
+        const personalPlans: PlanType[] = ['personal', 'personal_pro'];
+        const businessPlans: PlanType[] = ['solo', 'team', 'business', 'enterprise'];
+        if (type === 'personal' && !personalPlans.includes(planType)) {
+          return res.status(400).json({ message: 'Este plan no está disponible para cuentas personales' });
+        }
+        if (type === 'business' && !businessPlans.includes(planType)) {
+          return res.status(400).json({ message: 'Este plan no está disponible para cuentas de empresa' });
+        }
+
+        const existing = await storage.getUserByEmail(email);
+        if (existing && !existing.deletedAt) {
+          return res.status(400).json({ message: 'Ya existe una cuenta con este email' });
+        }
+        const existingPending = await storage.getPendingSignupByEmail(email);
+        if (existingPending) {
+          await storage.deletePendingSignup(existingPending.id);
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const validCountry = COUNTRIES.includes(country) ? country : 'AR';
+
+        const pendingSignup = await storage.createPendingSignup({
+          email,
+          name,
+          hashedPassword,
+          accountType: type,
+          organizationName: organizationName || null,
+          country: validCountry,
+          profileIconKey: profileIconKey || null,
+          phoneNumber: phoneNumber || null,
+          planType,
+          priceId: `mp:${planType}`,
+          status: 'pending',
+          termsAcceptedAt: new Date(),
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        });
+
+        try {
+          const sub = await createMpSubscription({
+            planType,
+            amount: PLAN_DETAILS[planType].price,
+            payerEmail: email,
+            externalReference: pendingSignup.id,
+            reason: `Aikestar - Plan ${PLAN_LABELS[planType]}`,
+            freeTrialDays: 30,
+          });
+          await storage.updatePendingSignup(pendingSignup.id, { stripeSessionId: sub.id });
+          return res.json({ checkoutUrl: sub.initPoint, pendingSignupId: pendingSignup.id });
+        } catch (mpErr: any) {
+          console.error('[Register/MP] Error creando suscripción:', mpErr?.message || mpErr);
+          await storage.deletePendingSignup(pendingSignup.id).catch(() => {});
+          return res.status(502).json({ message: 'No se pudo iniciar el pago con MercadoPago. Intentá de nuevo.' });
+        }
+      }
+
       if (!priceId) {
         return res.status(400).json({ message: 'Debes seleccionar un plan' });
       }
@@ -744,7 +811,8 @@ export function registerAuthRoutes(app: Express): void {
         }
         
         // Reconciliation: Link Stripe subscription if missing
-        if (!user.stripeSubscriptionId && user.email) {
+        // (se omite para usuarios de MercadoPago: no tienen datos en Stripe)
+        if (!user.stripeSubscriptionId && !user.mpSubscriptionId && user.email) {
           try {
             const stripe = await getUncachableStripeClient();
             const customers = await stripe.customers.list({ email: user.email, limit: 1 });

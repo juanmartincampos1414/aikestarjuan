@@ -124,6 +124,7 @@ export const users = pgTable("users", {
   mustChangePassword: boolean("must_change_password").default(false),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  mpSubscriptionId: text("mp_subscription_id"), // MercadoPago preapproval id
   isAdmin: boolean("is_admin").default(false),
   phoneNumber: text("phone_number"),
   phoneVerified: boolean("phone_verified").default(false),
@@ -1718,6 +1719,7 @@ export const subscriptions = pgTable("subscriptions", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripePriceId: text("stripe_price_id"),
+  mpSubscriptionId: text("mp_subscription_id"), // MercadoPago preapproval id
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),

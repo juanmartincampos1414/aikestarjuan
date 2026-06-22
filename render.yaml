@@ -29,6 +29,12 @@ services:
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false                    # se carga a mano en el dashboard (secreto)
+      - key: APP_BASE_URL
+        value: https://app.aikestar.com   # usado para los back_url/notification_url de MercadoPago
+      - key: MP_ACCESS_TOKEN
+        sync: false                    # Access Token de MercadoPago (secreto)
+      # - key: MP_WEBHOOK_SECRET       # opcional: validación de firma del webhook
+      #   sync: false
       # --- Opcionales (dejar sin valor hasta que tengas las claves) ---
       # - key: AI_INTEGRATIONS_GEMINI_API_KEY   # solo transcripción de audio de WhatsApp
       #   sync: false
