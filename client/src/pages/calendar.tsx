@@ -57,6 +57,20 @@ interface CalendarTransaction {
   } | null;
 }
 
+interface CrmCalendarEvent {
+  kind: 'activity' | 'quote_due' | 'work_order';
+  title: string;
+  date: string;
+  refId: string;
+  meta?: any;
+}
+
+const CRM_EVENT_STYLE: Record<string, { dot: string; label: string }> = {
+  activity: { dot: 'bg-cyan-500', label: 'text-cyan-700 dark:text-cyan-300' },
+  quote_due: { dot: 'bg-amber-500', label: 'text-amber-700 dark:text-amber-300' },
+  work_order: { dot: 'bg-indigo-500', label: 'text-indigo-700 dark:text-indigo-300' },
+};
+
 interface DayGroup {
   date: string;
   transactions: CalendarTransaction[];
@@ -182,6 +196,29 @@ export default function CalendarPage() {
       return res.json();
     },
   });
+
+  // Eventos del CRM/operaciones (visitas/seguimientos, vencimientos de presupuestos,
+  // trabajos programados) para superponer en el calendario.
+  const { data: crmEvents = [] } = useQuery<CrmCalendarEvent[]>({
+    queryKey: ['calendar-crm', dateRange.start.toISOString(), dateRange.end.toISOString()],
+    queryFn: async () => {
+      const res = await fetch(`/api/calendar/crm-events?from=${dateRange.start.toISOString()}&to=${dateRange.end.toISOString()}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    retry: false,
+  });
+
+  const crmEventsByDay = useMemo(() => {
+    const map = new Map<string, CrmCalendarEvent[]>();
+    for (const ev of crmEvents) {
+      const key = format(new Date(ev.date), 'yyyy-MM-dd');
+      const arr = map.get(key) || [];
+      arr.push(ev);
+      map.set(key, arr);
+    }
+    return map;
+  }, [crmEvents]);
 
   const navigate = (direction: 'prev' | 'next') => {
     switch (viewMode) {
@@ -327,6 +364,21 @@ export default function CalendarPage() {
                 </div>
               </div>
             )}
+            {(() => {
+              const evs = crmEventsByDay.get(dateKey) || [];
+              if (evs.length === 0) return null;
+              return (
+                <div className="mt-0.5 space-y-0.5">
+                  {evs.slice(0, 2).map((ev, i) => (
+                    <div key={i} className={`text-[9px] truncate flex items-center gap-1 ${CRM_EVENT_STYLE[ev.kind].label}`} title={ev.title}>
+                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${CRM_EVENT_STYLE[ev.kind].dot}`} />
+                      <span className="truncate">{ev.title}</span>
+                    </div>
+                  ))}
+                  {evs.length > 2 && <div className="text-[9px] text-muted-foreground">+{evs.length - 2} más</div>}
+                </div>
+              );
+            })()}
           </div>
         );
       })}
