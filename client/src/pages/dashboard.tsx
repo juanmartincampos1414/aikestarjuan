@@ -34,6 +34,7 @@ import { DrillDownModal } from '@/components/DrillDownModal';
 import { CurrencyWithTooltip } from '@/components/CurrencyWithTooltip';
 import { fetchWithAuth, employeeAPI } from '@/lib/api';
 import { TiendanubeDashboardAlert } from '@/components/integrations/TiendanubeDashboardAlert';
+import { CrmDashboardCards } from '@/components/crm/CrmDashboardCards';
 import { normalizeAmountInput, formatAmountLive } from '@/lib/currency';
 import { useToast } from '@/hooks/use-toast';
 import { safeParseDate, calculateAccruedInterest, filterCancellationPairs, getEffectiveTransactionDate } from '@/lib/utils';
@@ -930,6 +931,7 @@ export default function DashboardPage() {
     <>
       <TooltipProvider>
       <TiendanubeDashboardAlert />
+      <CrmDashboardCards />
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         {/* Hide org header on mobile - shown in top bar instead */}
         <div className="hidden md:flex items-center gap-4">

@@ -19,6 +19,7 @@ import { startCancelledAccountCleanup } from "./services/cancelledAccountCleanup
 import { startSubscriptionBillingCron } from "./services/subscriptionBilling";
 import { startMrrSnapshotCron } from "./services/mrrSnapshot";
 import { startTiendanubeReconcileCron } from "./services/tiendanubeReconcileCron";
+import { startCrmReminderCron } from "./services/crmReminderCron";
 import { runOneTimeCleanup } from "./services/oneTimeCleanup";
 import { reportSystemError } from "./services/errorAlerts";
 // Note: stripe-replit-sync is imported dynamically only in development mode
@@ -760,6 +761,9 @@ app.use((req, res, next) => {
   const { addProductsImageUrlColumn } = await import('./migrations/0043_products_image_url');
   await addProductsImageUrlColumn();
 
+  const { createCrmTables } = await import('./migrations/0044_crm');
+  await createCrmTables();
+
   // Task #282: barrer conversaciones vencidas (>30 min) cada 5 min para que
   // la tabla no crezca sin límite. El TTL ya se aplica en lecturas; esto
   // es solo limpieza física.
@@ -788,6 +792,7 @@ app.use((req, res, next) => {
       startSubscriptionBillingCron();
       startMrrSnapshotCron();
       startTiendanubeReconcileCron();
+      startCrmReminderCron();
       runOneTimeCleanup().catch(err => console.error('[Cleanup] Error:', err.message));
       backfillExpenseSubtypes().catch(err => console.error('[Backfill] Error:', err.message));
     },

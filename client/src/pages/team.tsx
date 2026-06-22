@@ -803,6 +803,10 @@ function formatPermission(perm: Permission): string {
     "users:manage": "Gestionar usuarios",
     "organization:settings": "Configuracion",
     "reports:export": "Exportar reportes",
+    "crm:read": "Ver CRM",
+    "crm:write": "Gestionar CRM",
+    "workorders:read": "Ver órdenes de trabajo",
+    "workorders:write": "Gestionar órdenes de trabajo",
   };
   return map[perm] || perm;
 }

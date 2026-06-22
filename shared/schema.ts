@@ -342,6 +342,10 @@ export const PERMISSIONS = [
   'users:manage',
   'organization:settings',
   'reports:export',
+  'crm:read',
+  'crm:write',
+  'workorders:read',
+  'workorders:write',
 ] as const;
 export type Permission = typeof PERMISSIONS[number];
 
@@ -356,6 +360,10 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'users:manage': 'gestionar miembros del equipo',
   'organization:settings': 'cambiar la configuración de la organización',
   'reports:export': 'exportar reportes',
+  'crm:read': 'ver el CRM',
+  'crm:write': 'gestionar oportunidades del CRM',
+  'workorders:read': 'ver órdenes de trabajo',
+  'workorders:write': 'gestionar órdenes de trabajo',
 };
 
 // Minimum role that grants each permission, used to suggest who to ask in
@@ -370,6 +378,10 @@ export const PERMISSION_MIN_ROLE: Record<Permission, Role> = {
   'users:manage': 'admin',
   'organization:settings': 'admin',
   'reports:export': 'viewer',
+  'crm:read': 'viewer',
+  'crm:write': 'operator',
+  'workorders:read': 'viewer',
+  'workorders:write': 'operator',
 };
 
 // Role-permission mapping
@@ -383,14 +395,17 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'accounts:create',
     'accounts:edit',
     'reports:export',
+    'crm:read', 'crm:write', 'workorders:read', 'workorders:write',
   ],
   'operator': [
     'transactions:create',
     'transactions:edit',
     'reports:export',
+    'crm:read', 'crm:write', 'workorders:read', 'workorders:write',
   ],
   'viewer': [
     'reports:export',
+    'crm:read', 'workorders:read',
   ],
 };
 
@@ -2812,3 +2827,85 @@ export const insertTiendanubeClientMatchSchema = createInsertSchema(tiendanubeCl
 });
 export type InsertTiendanubeClientMatch = z.infer<typeof insertTiendanubeClientMatchSchema>;
 export type TiendanubeClientMatch = typeof tiendanubeClientMatches.$inferSelect;
+
+// =============================================================================
+// CRM COMERCIAL
+// =============================================================================
+
+// Etapas del pipeline (ordenadas). Se guardan como texto en la oportunidad.
+export const CRM_STAGES = [
+  'consulta',
+  'visita',
+  'presupuesto_preparacion',
+  'presupuesto_enviado',
+  'seguimiento',
+  'aprobado',
+  'perdido',
+] as const;
+export type CrmStage = typeof CRM_STAGES[number];
+
+export const CRM_STAGE_LABELS: Record<CrmStage, string> = {
+  consulta: 'Consulta recibida',
+  visita: 'Visita técnica',
+  presupuesto_preparacion: 'Presupuesto en preparación',
+  presupuesto_enviado: 'Presupuesto enviado',
+  seguimiento: 'Seguimiento',
+  aprobado: 'Aprobado',
+  perdido: 'Perdido',
+};
+
+export const CRM_ACTIVITY_TYPES = ['call', 'whatsapp', 'email', 'meeting', 'visit', 'note', 'stage_change', 'system'] as const;
+export type CrmActivityType = typeof CRM_ACTIVITY_TYPES[number];
+
+export const crmOpportunities = pgTable("crm_opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: "set null" }),
+  contactName: text("contact_name"),
+  phone: text("phone"),
+  email: text("email"),
+  title: text("title").notNull(),
+  description: text("description"),
+  estimatedValue: decimal("estimated_value", { precision: 15, scale: 2 }).default("0"),
+  currency: text("currency").notNull().default("ARS"),
+  probability: integer("probability").default(50), // 0-100
+  stage: text("stage").notNull().default("consulta"), // CrmStage
+  status: text("status").notNull().default("open"), // 'open' | 'won' | 'lost'
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  quoteId: varchar("quote_id").references(() => quotes.id, { onDelete: "set null" }),
+  expectedCloseDate: timestamp("expected_close_date"),
+  nextFollowupAt: timestamp("next_followup_at"),
+  lostReason: text("lost_reason"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgStageIdx: index("crm_opp_org_stage_idx").on(t.organizationId, t.stage),
+  orgStatusIdx: index("crm_opp_org_status_idx").on(t.organizationId, t.status),
+  quoteIdx: index("crm_opp_quote_idx").on(t.quoteId),
+}));
+
+export const insertCrmOpportunitySchema = createInsertSchema(crmOpportunities, {
+  estimatedValue: z.string().or(z.number()).transform(v => String(v)).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCrmOpportunity = z.infer<typeof insertCrmOpportunitySchema>;
+export type CrmOpportunity = typeof crmOpportunities.$inferSelect;
+
+export const crmActivities = pgTable("crm_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").notNull().references(() => crmOpportunities.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // CrmActivityType
+  content: text("content"),
+  scheduledAt: timestamp("scheduled_at"), // visitas / seguimientos futuros (para el calendario)
+  completedAt: timestamp("completed_at"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  oppIdx: index("crm_act_opp_idx").on(t.opportunityId, t.createdAt),
+  schedIdx: index("crm_act_sched_idx").on(t.organizationId, t.scheduledAt),
+}));
+
+export const insertCrmActivitySchema = createInsertSchema(crmActivities).omit({ id: true, createdAt: true });
+export type InsertCrmActivity = z.infer<typeof insertCrmActivitySchema>;
+export type CrmActivity = typeof crmActivities.$inferSelect;
