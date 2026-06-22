@@ -9,6 +9,7 @@ import { registerStripeRoutes } from "./routes/stripe";
 import { registerMercadoPagoRoutes } from "./routes/mercadopago";
 import { registerTiendanubeRoutes } from "./routes/tiendanube";
 import { registerCrmRoutes } from "./routes/crm";
+import { registerWorkOrderRoutes } from "./routes/workOrders";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerWhatsAppRoutes } from "./routes/whatsapp";
 import { registerNotificationRoutes } from "./routes/notifications";
@@ -185,6 +186,7 @@ export async function registerRoutes(
   registerMercadoPagoRoutes(app);
   registerTiendanubeRoutes(app);
   registerCrmRoutes(app);
+  registerWorkOrderRoutes(app);
   registerAdminRoutes(app);
   registerWhatsAppRoutes(app);
   registerNotificationRoutes(app);

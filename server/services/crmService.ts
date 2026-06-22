@@ -7,7 +7,7 @@
 import { db } from '../db';
 import { and, eq, desc, inArray } from 'drizzle-orm';
 import {
-  crmOpportunities, crmActivities, CRM_STAGES,
+  crmOpportunities, crmActivities, CRM_STAGES, workOrders, quotes,
   type CrmOpportunity, type CrmStage, type CrmActivityType,
 } from '@shared/schema';
 import { storage } from '../storage';
@@ -186,6 +186,38 @@ export async function onQuoteLost(quote: any, userId?: string | null): Promise<v
 export async function getCrmMetrics(organizationId: string) {
   const opps = await db.select().from(crmOpportunities).where(eq(crmOpportunities.organizationId, organizationId));
   return computeMetrics(opps);
+}
+
+// Eventos para el calendario: visitas/seguimientos agendados, vencimientos de
+// presupuestos y órdenes de trabajo programadas (en un rango opcional).
+export interface CalendarEvent { kind: 'activity' | 'quote_due' | 'work_order'; title: string; date: string; refId: string; meta?: any; }
+
+export async function getCalendarEvents(organizationId: string, from?: Date, to?: Date): Promise<CalendarEvent[]> {
+  const inRange = (d: Date | null | undefined) => !!d && (!from || d >= from) && (!to || d <= to);
+  const events: CalendarEvent[] = [];
+
+  const acts = await db.select().from(crmActivities).where(eq(crmActivities.organizationId, organizationId));
+  for (const a of acts) {
+    if (a.scheduledAt && inRange(a.scheduledAt)) {
+      events.push({ kind: 'activity', title: `${a.type === 'visit' ? 'Visita' : 'Seguimiento'}: ${a.content || ''}`.trim(), date: new Date(a.scheduledAt).toISOString(), refId: a.opportunityId, meta: { type: a.type } });
+    }
+  }
+
+  const qs = await db.select().from(quotes).where(eq(quotes.organizationId, organizationId));
+  for (const q of qs) {
+    if (q.status === 'pending' && q.validUntil && inRange(q.validUntil)) {
+      events.push({ kind: 'quote_due', title: `Vence presupuesto: ${q.title}`, date: new Date(q.validUntil).toISOString(), refId: q.id });
+    }
+  }
+
+  const orders = await db.select().from(workOrders).where(eq(workOrders.organizationId, organizationId));
+  for (const o of orders) {
+    if (o.scheduledDate && inRange(o.scheduledDate) && o.status !== 'cobrado') {
+      events.push({ kind: 'work_order', title: `Trabajo: ${o.title}`, date: new Date(o.scheduledDate).toISOString(), refId: o.id, meta: { status: o.status, priority: o.priority } });
+    }
+  }
+
+  return events.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // Seguimientos vencidos (para recordatorios / cron).

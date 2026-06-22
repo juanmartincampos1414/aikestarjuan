@@ -7,8 +7,9 @@
 // las acciones sobre el CRM. org/usuario se ligan server-side (no los infiere el modelo).
 // =============================================================================
 import { anthropic } from '../lib/claude';
-import { CRM_STAGES, CRM_STAGE_LABELS, type CrmStage } from '@shared/schema';
+import { CRM_STAGES, CRM_STAGE_LABELS, WORK_ORDER_STATES, type CrmStage, type WorkOrderState } from '@shared/schema';
 import * as crm from './crmService';
+import * as wo from './workOrderService';
 
 interface Ctx { organizationId: string; userId: string | null; }
 
@@ -64,6 +65,30 @@ const tools = [
       required: ['query', 'type'],
     },
   },
+  {
+    name: 'create_work_order',
+    description: 'Crea una orden de trabajo (ejecución operativa).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Título del trabajo' },
+        priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'update_work_order_status',
+    description: 'Cambia el estado de una orden de trabajo (buscándola por título).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Título de la orden' },
+        status: { type: 'string', enum: WORK_ORDER_STATES as unknown as string[] },
+      },
+      required: ['query', 'status'],
+    },
+  },
 ];
 
 async function findOne(ctx: Ctx, query: string) {
@@ -105,6 +130,18 @@ async function execTool(name: string, input: any, ctx: Ctx): Promise<any> {
       });
       return { ok: true, opportunity: list[0].title, activityId: act.id };
     }
+    case 'create_work_order': {
+      const order = await wo.createWorkOrder({ organizationId: ctx.organizationId, title: input.title, priority: input.priority || 'medium', createdBy: ctx.userId });
+      return { ok: true, id: order.id, title: order.title, status: order.status };
+    }
+    case 'update_work_order_status': {
+      const list = await wo.listWorkOrders(ctx.organizationId);
+      const matches = list.filter(o => (o.title || '').toLowerCase().includes(String(input.query).toLowerCase()));
+      if (matches.length === 0) return { ok: false, error: 'No se encontró la orden' };
+      if (matches.length > 1) return { ok: false, error: 'Hay varias órdenes que coinciden; pedí que aclaren', candidates: matches.slice(0, 5).map(o => o.title) };
+      const updated = await wo.transition(matches[0].id, input.status as WorkOrderState, ctx.userId);
+      return { ok: true, id: matches[0].id, title: matches[0].title, status: updated?.status };
+    }
     default:
       return { ok: false, error: 'Acción desconocida' };
   }
@@ -115,10 +152,11 @@ export interface AgentResult { reply: string; actions: Array<{ tool: string; inp
 export async function runCrmCommand(text: string, ctx: Ctx): Promise<AgentResult> {
   const today = new Date().toISOString().slice(0, 10);
   const stageList = CRM_STAGES.map(s => `${s} (${CRM_STAGE_LABELS[s]})`).join(', ');
-  const system = `Sos Aike, asistente del CRM de Aikestar para una PyME argentina. Hoy es ${today}.
-Interpretás pedidos en español y ejecutás acciones usando las herramientas disponibles.
+  const system = `Sos Aike, asistente del CRM y operaciones de Aikestar para una PyME argentina. Hoy es ${today}.
+Interpretás pedidos en español y ejecutás acciones usando las herramientas disponibles (oportunidades del CRM y órdenes de trabajo).
 Etapas del pipeline: ${stageList}.
-Cuando muevas o agendes sobre una oportunidad existente, primero buscala (find_opportunity) si no la tenés.
+Estados de orden de trabajo: ${WORK_ORDER_STATES.join(', ')}.
+Cuando muevas o agendes sobre una oportunidad/orden existente, primero buscala (find_opportunity) si no la tenés.
 Respondé en español rioplatense, breve y concreto, confirmando lo que hiciste. Si falta info, preguntá.`;
 
   const messages: any[] = [{ role: 'user', content: text }];

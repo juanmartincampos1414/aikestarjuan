@@ -42,7 +42,8 @@ import {
   RefreshCw,
   Landmark,
   Store,
-  KanbanSquare
+  KanbanSquare,
+  Warehouse
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -452,6 +453,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (shouldBlockBusinessFeatures) {
       return [
         { name: 'CRM', href: '/crm', icon: KanbanSquare, disabled: true },
+        { name: 'Órdenes de Trabajo', href: '/ordenes', icon: Warehouse, disabled: true },
         { name: 'Clientes', href: '/clients', icon: Users2, disabled: true },
         { name: 'Proveedores', href: '/suppliers', icon: Briefcase, disabled: true },
         { name: 'Productos/Activos', href: '/products', icon: Package, disabled: true },
@@ -463,6 +465,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     return [
       { name: 'CRM', href: '/crm', icon: KanbanSquare },
+      { name: 'Órdenes de Trabajo', href: '/ordenes', icon: Warehouse },
       { name: 'Clientes', href: '/clients', icon: Users2 },
       { name: 'Proveedores', href: '/suppliers', icon: Briefcase },
       { name: 'Productos/Activos', href: '/products', icon: Package },

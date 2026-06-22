@@ -37,6 +37,15 @@ export function registerCrmRoutes(app: Express): void {
     catch { res.status(500).json({ message: 'Error' }); }
   });
 
+  // Eventos para el calendario (visitas/seguimientos, vencimientos, trabajos programados).
+  app.get('/api/calendar/crm-events', requireAuth, requirePermission('crm:read'), async (req: any, res: Response) => {
+    try {
+      const from = req.query.from ? new Date(req.query.from) : undefined;
+      const to = req.query.to ? new Date(req.query.to) : undefined;
+      res.json(await crm.getCalendarEvents(req.organizationId, from, to));
+    } catch { res.status(500).json({ message: 'Error' }); }
+  });
+
   app.get('/api/crm/opportunities', requireAuth, requirePermission('crm:read'), async (req: any, res: Response) => {
     try {
       res.json(await crm.listOpportunities(req.organizationId, { ownerUserId: req.query.owner, q: req.query.q, status: req.query.status }));

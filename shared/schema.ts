@@ -2909,3 +2909,83 @@ export const crmActivities = pgTable("crm_activities", {
 export const insertCrmActivitySchema = createInsertSchema(crmActivities).omit({ id: true, createdAt: true });
 export type InsertCrmActivity = z.infer<typeof insertCrmActivitySchema>;
 export type CrmActivity = typeof crmActivities.$inferSelect;
+
+// =============================================================================
+// ÓRDENES DE TRABAJO
+// =============================================================================
+export const WORK_ORDER_STATES = ['pendiente', 'programado', 'en_ejecucion', 'esperando_materiales', 'finalizado', 'facturado', 'cobrado'] as const;
+export type WorkOrderState = typeof WORK_ORDER_STATES[number];
+export const WORK_ORDER_STATE_LABELS: Record<WorkOrderState, string> = {
+  pendiente: 'Pendiente', programado: 'Programado', en_ejecucion: 'En ejecución',
+  esperando_materiales: 'Esperando materiales', finalizado: 'Finalizado', facturado: 'Facturado', cobrado: 'Cobrado',
+};
+export const WORK_ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+export type WorkOrderPriority = typeof WORK_ORDER_PRIORITIES[number];
+export const WORK_ORDER_PRIORITY_LABELS: Record<WorkOrderPriority, string> = {
+  low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente',
+};
+
+export const workOrders = pgTable("work_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  quoteId: varchar("quote_id").references(() => quotes.id, { onDelete: "set null" }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("pendiente"), // WorkOrderState
+  priority: text("priority").notNull().default("medium"), // WorkOrderPriority
+  scheduledDate: timestamp("scheduled_date"),
+  executionDate: timestamp("execution_date"),
+  technicalNotes: text("technical_notes"),
+  hoursWorked: decimal("hours_worked", { precision: 10, scale: 2 }).default("0"),
+  linkedTransactionId: varchar("linked_transaction_id"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgStatusIdx: index("wo_org_status_idx").on(t.organizationId, t.status),
+  quoteIdx: index("wo_quote_idx").on(t.quoteId),
+}));
+
+export const insertWorkOrderSchema = createInsertSchema(workOrders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWorkOrder = z.infer<typeof insertWorkOrderSchema>;
+export type WorkOrder = typeof workOrders.$inferSelect;
+
+export const workOrderAssignments = pgTable("work_order_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+}, (t) => ({ woIdx: index("wo_assign_wo_idx").on(t.workOrderId) }));
+export type WorkOrderAssignment = typeof workOrderAssignments.$inferSelect;
+
+export const workOrderMaterials = pgTable("work_order_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").references(() => products.id, { onDelete: "set null" }),
+  description: text("description").notNull(),
+  quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull().default("1"),
+  unitCost: decimal("unit_cost", { precision: 15, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({ woIdx: index("wo_mat_wo_idx").on(t.workOrderId) }));
+export type WorkOrderMaterial = typeof workOrderMaterials.$inferSelect;
+
+export const workOrderPhotos = pgTable("work_order_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  caption: text("caption"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({ woIdx: index("wo_photo_wo_idx").on(t.workOrderId) }));
+export type WorkOrderPhoto = typeof workOrderPhotos.$inferSelect;
+
+export const workOrderTimeline = pgTable("work_order_timeline", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  detail: jsonb("detail"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({ woIdx: index("wo_tl_wo_idx").on(t.workOrderId, t.createdAt) }));
+export type WorkOrderTimelineEntry = typeof workOrderTimeline.$inferSelect;

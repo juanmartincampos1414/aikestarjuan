@@ -4,6 +4,7 @@ import { storage } from '../storage';
 import { requireAuth, requirePermission, sanitizeError } from './middleware';
 import { insertQuoteSchema, type InsertQuoteItem } from '@shared/schema';
 import * as crm from '../services/crmService';
+import * as workOrders from '../services/workOrderService';
 
 // Task #481: line items (productos/servicios) sent alongside a quote.
 // `productId` is optional/nullable so a line can be free-text (un servicio sin
@@ -252,8 +253,9 @@ export function registerQuoteRoutes(app: Express) {
         // Lost the race against a concurrent transition.
         return res.status(409).json({ message: 'El presupuesto cambió de estado' });
       }
-      // CRM: mover la oportunidad a "Aprobado" (no bloqueante). Fase 2: genera OT.
+      // CRM: mover la oportunidad a "Aprobado" + generar la Orden de Trabajo (no bloqueante).
       crm.onQuoteWon(updated, req.userId).catch((e) => console.error('[CRM] onQuoteWon:', e?.message || e));
+      workOrders.createFromQuote(updated, req.userId).catch((e) => console.error('[WO] createFromQuote:', e?.message || e));
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: sanitizeError(error) });

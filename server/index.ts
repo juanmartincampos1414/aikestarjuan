@@ -764,6 +764,9 @@ app.use((req, res, next) => {
   const { createCrmTables } = await import('./migrations/0044_crm');
   await createCrmTables();
 
+  const { createWorkOrderTables } = await import('./migrations/0045_work_orders');
+  await createWorkOrderTables();
+
   // Task #282: barrer conversaciones vencidas (>30 min) cada 5 min para que
   // la tabla no crezca sin límite. El TTL ya se aplica en lecturas; esto
   // es solo limpieza física.
