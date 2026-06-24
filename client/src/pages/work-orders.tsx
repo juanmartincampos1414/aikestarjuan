@@ -109,6 +109,11 @@ function WorkOrderDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const [photoUrl, setPhotoUrl] = useState('');
   const addPhoto = useMutation({ mutationFn: () => fetchWithAuth(`/work-orders/${id}/photos`, { method: 'POST', body: JSON.stringify({ url: photoUrl }) }), onSuccess: () => { setPhotoUrl(''); invalidate(); }, onError: (e: any) => toast({ title: 'Error', description: e?.message, variant: 'destructive' }) });
   const delPhoto = useMutation({ mutationFn: (pid: string) => fetchWithAuth(`/work-orders/photos/${pid}`, { method: 'DELETE' }), onSuccess: invalidate });
+  const genRemito = useMutation({
+    mutationFn: (applyStock: boolean) => fetchWithAuth(`/remitos/from-work-order/${id}`, { method: 'POST', body: JSON.stringify({ applyStock }) }),
+    onSuccess: (r: any) => toast({ title: 'Remito generado', description: `Remito ${r.number} con los materiales de la orden.` }),
+    onError: (e: any) => toast({ title: 'Error', description: e?.message, variant: 'destructive' }),
+  });
 
   const o = data?.workOrder;
   return (
@@ -125,6 +130,11 @@ function WorkOrderDetail({ id, onClose }: { id: string; onClose: () => void }) {
                 <SelectContent>{WORK_ORDER_STATES.map(s => <SelectItem key={s} value={s}>{WORK_ORDER_STATE_LABELS[s]}</SelectItem>)}</SelectContent>
               </Select>
               <Badge variant="outline" className={PRIORITY_COLOR[o.priority]}>{WORK_ORDER_PRIORITY_LABELS[o.priority as keyof typeof WORK_ORDER_PRIORITY_LABELS]}</Badge>
+            </div>
+
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={genRemito.isPending} onClick={() => genRemito.mutate(false)}>Generar remito</Button>
+              <Button size="sm" variant="ghost" disabled={genRemito.isPending} onClick={() => genRemito.mutate(true)}>Remito + descontar stock</Button>
             </div>
 
             {/* Técnicos */}

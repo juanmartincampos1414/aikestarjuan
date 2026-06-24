@@ -454,6 +454,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return [
         { name: 'CRM', href: '/crm', icon: KanbanSquare, disabled: true },
         { name: 'Órdenes de Trabajo', href: '/ordenes', icon: Warehouse, disabled: true },
+        { name: 'Remitos', href: '/remitos', icon: FileText, disabled: true },
         { name: 'Clientes', href: '/clients', icon: Users2, disabled: true },
         { name: 'Proveedores', href: '/suppliers', icon: Briefcase, disabled: true },
         { name: 'Productos/Activos', href: '/products', icon: Package, disabled: true },
@@ -466,6 +467,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return [
       { name: 'CRM', href: '/crm', icon: KanbanSquare },
       { name: 'Órdenes de Trabajo', href: '/ordenes', icon: Warehouse },
+      { name: 'Remitos', href: '/remitos', icon: FileText },
       { name: 'Clientes', href: '/clients', icon: Users2 },
       { name: 'Proveedores', href: '/suppliers', icon: Briefcase },
       { name: 'Productos/Activos', href: '/products', icon: Package },

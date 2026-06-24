@@ -2989,3 +2989,45 @@ export const workOrderTimeline = pgTable("work_order_timeline", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({ woIdx: index("wo_tl_wo_idx").on(t.workOrderId, t.createdAt) }));
 export type WorkOrderTimelineEntry = typeof workOrderTimeline.$inferSelect;
+
+// =============================================================================
+// REMITOS (comprobante de entrega de mercadería/servicios)
+// =============================================================================
+export const REMITO_STATUSES = ['emitido', 'anulado'] as const;
+export type RemitoStatus = typeof REMITO_STATUSES[number];
+
+export const remitos = pgTable("remitos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  number: text("number").notNull(), // numeración por org (ej. 0001-00000001)
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: "set null" }),
+  clientName: text("client_name"), // snapshot/free-text
+  date: timestamp("date").defaultNow().notNull(),
+  status: text("status").notNull().default("emitido"), // RemitoStatus
+  notes: text("notes"),
+  linkedQuoteId: varchar("linked_quote_id").references(() => quotes.id, { onDelete: "set null" }),
+  linkedWorkOrderId: varchar("linked_work_order_id").references(() => workOrders.id, { onDelete: "set null" }),
+  stockApplied: boolean("stock_applied").notNull().default(false), // si descontó stock al emitir
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("remitos_org_idx").on(t.organizationId, t.date),
+  numUnique: uniqueIndex("remitos_org_number_unique").on(t.organizationId, t.number),
+}));
+
+export const insertRemitoSchema = createInsertSchema(remitos).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRemito = z.infer<typeof insertRemitoSchema>;
+export type Remito = typeof remitos.$inferSelect;
+
+export const remitoItems = pgTable("remito_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  remitoId: varchar("remito_id").notNull().references(() => remitos.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").references(() => products.id, { onDelete: "set null" }),
+  description: text("description").notNull(),
+  quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull().default("1"),
+  unitPrice: decimal("unit_price", { precision: 15, scale: 2 }), // opcional (remito valorizado o no)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({ remIdx: index("remito_items_remito_idx").on(t.remitoId) }));
+export type RemitoItem = typeof remitoItems.$inferSelect;
