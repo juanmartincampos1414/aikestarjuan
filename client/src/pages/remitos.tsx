@@ -108,11 +108,19 @@ function NewRemito({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<'manual' | 'quote' | 'wo'>('manual');
   const [applyStock, setApplyStock] = useState(false);
   const [clientName, setClientName] = useState('');
-  const [items, setItems] = useState<Array<{ description: string; quantity: string }>>([{ description: '', quantity: '1' }]);
+  const [items, setItems] = useState<Array<{ description: string; quantity: string; productId?: string | null; unitPrice?: string | null }>>([{ description: '', quantity: '1' }]);
   const [sourceId, setSourceId] = useState('');
 
   const { data: quotes = [] } = useQuery<any[]>({ queryKey: ['/api/quotes'], queryFn: () => fetchWithAuth('/quotes'), enabled: mode === 'quote' });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ['/work-orders'], queryFn: () => fetchWithAuth('/work-orders'), enabled: mode === 'wo' });
+  // Catálogo de productos (incluye los de Tiendanube) para elegir en los ítems.
+  const { data: products = [] } = useQuery<any[]>({ queryKey: ['/api/products'], queryFn: () => fetchWithAuth('/products'), enabled: mode === 'manual' });
+
+  function pickProduct(i: number, productId: string) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    setItems(arr => arr.map((it, idx) => idx === i ? { ...it, productId: p.id, description: p.name, unitPrice: p.salePrice ?? null } : it));
+  }
 
   const done = () => { queryClient.invalidateQueries({ queryKey: ['/remitos'] }); toast({ title: 'Remito generado' }); onClose(); };
   const fail = (e: any) => toast({ title: 'Error', description: e?.message, variant: 'destructive' });
@@ -145,13 +153,25 @@ function NewRemito({ onClose }: { onClose: () => void }) {
           {mode === 'manual' && (
             <>
               <div><Label>Cliente</Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nombre del cliente" /></div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label>Ítems</Label>
                 {items.map((it, i) => (
-                  <div key={i} className="flex gap-1.5">
-                    <Input className="w-16" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
-                    <Input className="flex-1" placeholder="Descripción" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
-                    {items.length > 1 && <Button size="icon" variant="ghost" onClick={() => setItems(arr => arr.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>}
+                  <div key={i} className="space-y-1 border rounded-lg p-2">
+                    <Select value={it.productId || ''} onValueChange={(v) => pickProduct(i, v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Elegir del catálogo (o escribir abajo)" /></SelectTrigger>
+                      <SelectContent>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}{p.externalSource === 'tiendanube' ? ' · Tiendanube' : ''}{p.sku ? ` (${p.sku})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-1.5">
+                      <Input className="w-16" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
+                      <Input className="flex-1" placeholder="Descripción" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
+                      {items.length > 1 && <Button size="icon" variant="ghost" onClick={() => setItems(arr => arr.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>}
+                    </div>
                   </div>
                 ))}
                 <Button size="sm" variant="outline" onClick={() => setItems(arr => [...arr, { description: '', quantity: '1' }])}><Plus className="h-3 w-3 mr-1" /> Ítem</Button>
