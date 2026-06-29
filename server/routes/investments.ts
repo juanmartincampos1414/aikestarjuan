@@ -6,6 +6,7 @@ import { requireAuth, requirePermission } from './middleware';
 import { INVESTMENT_ASSET_TYPES, type InvestmentAssetType } from '@shared/schema';
 import * as investments from '../services/investmentService';
 import { getInvestmentReport } from '../services/investmentReport';
+import { searchSymbols, resolveQuote } from '../services/marketData';
 
 function parseAssetType(v: any): InvestmentAssetType {
   return (INVESTMENT_ASSET_TYPES as readonly string[]).includes(v) ? v : 'otro';
@@ -16,6 +17,24 @@ export function registerInvestmentRoutes(app: Express): void {
   app.get('/api/market-investments', requireAuth, async (req: any, res: Response) => {
     try { res.json(await investments.getPortfolio(req.organizationId)); }
     catch (e) { res.status(500).json({ message: 'No se pudieron cargar las inversiones' }); }
+  });
+
+  // Autocompletado de símbolos en el alta de inversiones.
+  app.get('/api/market-investments/search', requireAuth, async (req: any, res: Response) => {
+    try {
+      const results = await searchSymbols(String(req.query.q || ''), parseAssetType(req.query.type));
+      res.json({ results });
+    } catch { res.json({ results: [] }); }
+  });
+
+  // Validación de un símbolo: ¿se consigue cotización? (para avisar antes de guardar).
+  app.get('/api/market-investments/resolve', requireAuth, async (req: any, res: Response) => {
+    try {
+      const symbol = String(req.query.symbol || '').trim();
+      if (!symbol) return res.json({ found: false });
+      const q = await resolveQuote(symbol, parseAssetType(req.query.assetType));
+      res.json(q ? { found: true, price: q.price, currency: q.currency, source: q.source } : { found: false });
+    } catch { res.json({ found: false }); }
   });
 
   // Reporte por período (para el PDF visual de Reportes → Inversiones).

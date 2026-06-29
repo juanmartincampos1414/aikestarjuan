@@ -87,7 +87,13 @@ export function toCoinGeckoId(symbol: string): string | null {
   const base = raw.replace(/(usdt|usdc|busd|usd)$/i, '') || raw;
   return COINGECKO_IDS[base] || null;
 }
-async function fetchCryptoQuote(symbol: string): Promise<Quote | null> {
+// Ticker base de cripto: "BINANCE:BTCUSDT" / "btc" / "ethusd" -> "BTC" / "ETH".
+export function cryptoBase(symbol: string): string {
+  const raw = (symbol.includes(':') ? symbol.split(':')[1] : symbol).toUpperCase().trim();
+  return raw.replace(/(USDT|USDC|BUSD|USD)$/i, '') || raw;
+}
+
+async function fetchCoinGeckoQuote(symbol: string): Promise<Quote | null> {
   const id = toCoinGeckoId(symbol);
   if (!id) return null;
   const data = await fetchJson(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`);
@@ -98,6 +104,22 @@ async function fetchCryptoQuote(symbol: string): Promise<Quote | null> {
     changePct: typeof row.usd_24h_change === 'number' ? row.usd_24h_change : null,
     prevClose: null, asOf: Date.now(), source: 'coingecko',
   };
+}
+
+// Coinbase spot: respaldo muy estable desde la nube (precio sin variación del día).
+async function fetchCoinbaseQuote(symbol: string): Promise<Quote | null> {
+  const base = cryptoBase(symbol);
+  if (!base) return null;
+  const data = await fetchJson(`https://api.coinbase.com/v2/prices/${base}-USD/spot`);
+  const amt = data?.data?.amount;
+  const price = amt != null ? parseFloat(String(amt)) : null;
+  if (price == null || !Number.isFinite(price)) return null;
+  return { price, currency: 'USD', changePct: null, prevClose: null, asOf: Date.now(), source: 'coinbase' };
+}
+
+// Cripto con fallback: CoinGecko (trae variación) → Coinbase (precio, cloud-friendly).
+async function fetchCryptoQuote(symbol: string): Promise<Quote | null> {
+  return (await fetchCoinGeckoQuote(symbol)) || (await fetchCoinbaseQuote(symbol));
 }
 
 // Mapea el símbolo de dólar ("DOLAR:blue", "blue", "mep"...) a la "casa" de dolarapi.
@@ -208,6 +230,59 @@ export async function getQuotes(
 
 export function quoteKey(symbol: string, assetType: string) {
   return cacheKey(symbol, assetType);
+}
+
+// Resuelve la cotización de un solo símbolo (para validar en el alta de inversiones).
+export async function resolveQuote(symbol: string, assetType: InvestmentAssetType): Promise<Quote | null> {
+  const m = await getQuotes([{ symbol, assetType }]);
+  return m.get(cacheKey(symbol, assetType)) ?? null;
+}
+
+// ── Búsqueda de símbolos (autocompletado del alta de inversiones) ─────────────
+export interface SymbolSuggestion { symbol: string; name: string; hint?: string }
+
+const DOLAR_SUGGESTIONS: SymbolSuggestion[] = [
+  { symbol: 'blue', name: 'Dólar Blue' },
+  { symbol: 'oficial', name: 'Dólar Oficial' },
+  { symbol: 'mep', name: 'Dólar MEP / Bolsa' },
+  { symbol: 'ccl', name: 'Dólar Contado con Liqui' },
+  { symbol: 'cripto', name: 'Dólar Cripto' },
+  { symbol: 'tarjeta', name: 'Dólar Tarjeta' },
+  { symbol: 'mayorista', name: 'Dólar Mayorista' },
+];
+
+export async function searchSymbols(query: string, assetType: InvestmentAssetType): Promise<SymbolSuggestion[]> {
+  const q = (query || '').trim();
+  if (q.length < 1) return assetType === 'dolar' ? DOLAR_SUGGESTIONS : [];
+
+  if (assetType === 'dolar') {
+    const lq = q.toLowerCase();
+    return DOLAR_SUGGESTIONS.filter((d) => d.symbol.includes(lq) || d.name.toLowerCase().includes(lq));
+  }
+
+  if (assetType === 'cripto') {
+    const data = await fetchJson(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`);
+    const coins: any[] = Array.isArray(data?.coins) ? data.coins : [];
+    return coins
+      .sort((a, b) => (a.market_cap_rank ?? 1e9) - (b.market_cap_rank ?? 1e9))
+      .slice(0, 8)
+      .map((c) => ({ symbol: String(c.symbol || '').toUpperCase(), name: c.name, hint: 'Cripto' }))
+      .filter((c) => c.symbol);
+  }
+
+  if (assetType === 'accion_us' || assetType === 'etf') {
+    const key = process.env.FINNHUB_API_KEY;
+    if (!key) return [];
+    const data = await fetchJson(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`);
+    const result: any[] = Array.isArray(data?.result) ? data.result : [];
+    return result
+      .filter((r) => r.symbol && !String(r.symbol).includes('.')) // descartar símbolos de otros mercados
+      .slice(0, 8)
+      .map((r) => ({ symbol: String(r.symbol).toUpperCase(), name: r.description || r.symbol, hint: r.type || 'Acción' }));
+  }
+
+  // BYMA / bonos: sin buscador gratuito confiable; se valida con la cotización.
+  return [];
 }
 
 // ── Histórico (para reportes por período) ────────────────────────────────────

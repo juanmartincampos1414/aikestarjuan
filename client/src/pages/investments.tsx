@@ -1,7 +1,7 @@
 // =============================================================================
 // AIKESTAR - Inversiones (cartera monitoreada en vivo con TradingView)
 // =============================================================================
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { fetchWithAuth } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Loader2, Plus, TrendingUp, TrendingDown, Trash2, Pencil, LineChart } from 'lucide-react';
+import { Loader2, Plus, TrendingUp, TrendingDown, Trash2, Pencil, LineChart, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { INVESTMENT_ASSET_TYPES, INVESTMENT_ASSET_TYPE_LABELS, type InvestmentAssetType } from '@shared/schema';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
 
@@ -258,6 +258,42 @@ function InvestmentForm({ existing, onClose }: { existing?: any; onClose: () => 
     if (!touchedCurrency) setCurrency(defaultCurrencyFor(v));
   };
 
+  // Autocompletado de símbolo (sugerencias) + validación de cotización en vivo.
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSug, setShowSug] = useState(false);
+  const [resolveState, setResolveState] = useState<{ status: 'idle' | 'checking' | 'found' | 'notfound'; price?: number; currency?: string; source?: string }>({ status: 'idle' });
+
+  useEffect(() => {
+    if (!showSug) return;
+    const q = symbol.trim();
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetchWithAuth(`/market-investments/search?q=${encodeURIComponent(q)}&type=${assetType}`);
+        setSuggestions(r?.results ?? []);
+      } catch { setSuggestions([]); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [symbol, assetType, showSug]);
+
+  useEffect(() => {
+    const s = symbol.trim();
+    if (!s) { setResolveState({ status: 'idle' }); return; }
+    setResolveState({ status: 'checking' });
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetchWithAuth(`/market-investments/resolve?symbol=${encodeURIComponent(s)}&assetType=${assetType}`);
+        setResolveState(r?.found ? { status: 'found', price: r.price, currency: r.currency, source: r.source } : { status: 'notfound' });
+      } catch { setResolveState({ status: 'idle' }); }
+    }, 550);
+    return () => clearTimeout(t);
+  }, [symbol, assetType]);
+
+  const pickSuggestion = (s: any) => {
+    setSymbol(s.symbol);
+    if (!name.trim() && s.name) setName(s.name);
+    setShowSug(false);
+  };
+
   const body = () => ({ name, assetType, symbol, quantity: quantity || '0', buyPrice: buyPrice || null, currency, broker, notes });
   const save = useMutation({
     mutationFn: () => existing
@@ -309,8 +345,42 @@ function InvestmentForm({ existing, onClose }: { existing?: any; onClose: () => 
           </div>
           <div>
             <Label>Símbolo / ticker</Label>
-            <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder={assetType === 'dolar' ? 'blue' : 'GGAL'} />
-            <p className="text-[11px] text-muted-foreground mt-1">{symbolHint}</p>
+            <div className="relative">
+              <Input
+                value={symbol}
+                onChange={(e) => { setSymbol(e.target.value); setShowSug(true); }}
+                onFocus={() => setShowSug(true)}
+                onBlur={() => setTimeout(() => setShowSug(false), 150)}
+                placeholder={assetType === 'dolar' ? 'blue' : assetType === 'cripto' ? 'BTC' : 'GGAL'}
+                autoComplete="off"
+              />
+              {showSug && suggestions.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover shadow-lg">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      <span className="truncate"><span className="font-medium">{s.symbol}</span> <span className="text-muted-foreground">· {s.name}</span></span>
+                      {s.hint && <span className="text-[10px] text-muted-foreground shrink-0">{s.hint}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Validación de cotización en vivo */}
+            {resolveState.status === 'checking' && (
+              <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Verificando cotización…</p>
+            )}
+            {resolveState.status === 'found' && (
+              <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Cotización encontrada: {fmtMoney(resolveState.price, resolveState.currency)} <span className="text-muted-foreground">· {resolveState.source}</span></p>
+            )}
+            {resolveState.status === 'notfound' && (
+              <p className="text-[11px] text-amber-600 mt-1 flex items-start gap-1"><AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /> No encontramos cotización para ese símbolo. Revisá el ticker (o el tipo de activo); si lo guardás igual, la posición quedará en $0 hasta corregirlo.</p>
+            )}
+            {resolveState.status === 'idle' && <p className="text-[11px] text-muted-foreground mt-1">{symbolHint}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -333,8 +403,8 @@ function InvestmentForm({ existing, onClose }: { existing?: any; onClose: () => 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!canSave} onClick={() => save.mutate()} className="bg-gradient-to-r from-[#00D4FF] to-[#FF3366]">
-            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (existing ? 'Guardar' : 'Agregar')}
+          <Button disabled={!canSave} onClick={() => save.mutate()} className={resolveState.status === 'notfound' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-gradient-to-r from-[#00D4FF] to-[#FF3366]'}>
+            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (existing ? 'Guardar' : resolveState.status === 'notfound' ? 'Agregar igual' : 'Agregar')}
           </Button>
         </DialogFooter>
       </DialogContent>
