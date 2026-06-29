@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Loader2, Plus, TrendingUp, TrendingDown, Trash2, Pencil, LineChart, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { INVESTMENT_ASSET_TYPES, INVESTMENT_ASSET_TYPE_LABELS, type InvestmentAssetType } from '@shared/schema';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
@@ -176,6 +177,7 @@ export default function InvestmentsPage() {
                       {p.pnl != null ? `${up ? '+' : ''}${fmtMoney(p.pnl, p.currency)}` : '—'} {p.pnlPct != null ? `(${fmtPct(p.pnlPct)})` : ''}
                     </div>
                   </div>
+                  <RowDeleteButton id={r.investment.id} name={r.investment.name} />
                 </div>
               );
             })}
@@ -187,6 +189,49 @@ export default function InvestmentsPage() {
       {editRow && <InvestmentForm existing={editRow.investment} onClose={() => setEditRow(null)} />}
       {detailRow && <InvestmentDetail row={detailRow} onClose={() => setDetailRow(null)} onEdit={() => { setEditRow(detailRow); setDetailRow(null); }} />}
     </div>
+  );
+}
+
+// ── Botón de eliminar por fila (con confirmación) ─────────────────────────────
+function RowDeleteButton({ id, name }: { id: string; name: string }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const del = useMutation({
+    mutationFn: () => fetchWithAuth(`/market-investments/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/market-investments'] }); toast({ title: 'Inversión eliminada' }); },
+    onError: () => toast({ title: 'No se pudo eliminar', variant: 'destructive' }),
+  });
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-600"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Eliminar ${name}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar “{name}”?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se quitará esta posición de tu cartera. Esta acción no se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.stopPropagation(); del.mutate(); }}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
