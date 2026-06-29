@@ -55,6 +55,8 @@ const DEFAULT_TICKERS = [
   { proName: 'NASDAQ:TSLA', title: 'Tesla' },
 ];
 
+const SOURCE_LABELS: Record<string, string> = { finnhub: 'Finnhub', yahoo: 'Yahoo Finance', dolarapi: 'DolarAPI' };
+
 type SortKey = 'name' | 'value' | 'pnl' | 'day';
 
 export default function InvestmentsPage() {
@@ -212,6 +214,9 @@ function InvestmentDetail({ row, onClose, onEdit }: { row: any; onClose: () => v
           <div><div className="text-xs text-muted-foreground">Resultado</div><div className={`font-semibold ${up ? 'text-emerald-500' : 'text-red-500'}`}>{p.pnl != null ? fmtMoney(p.pnl, p.currency) : '—'} ({fmtPct(p.pnlPct)})</div></div>
           <div><div className="text-xs text-muted-foreground">Día</div><div className={`font-semibold ${(p.dayChangePct ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{fmtPct(p.dayChangePct)}</div></div>
         </div>
+        {p.quoteSource && (
+          <p className="text-[11px] text-muted-foreground -mt-1">Cotización vía {SOURCE_LABELS[p.quoteSource] ?? p.quoteSource}{p.quoteAsOf ? ` · ${new Date(p.quoteAsOf).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+        )}
         <div className="rounded-lg overflow-hidden border" style={{ height: 380 }}>
           <TradingViewWidget type="advanced-chart" height={380} config={{
             symbol: tvSymbol(inv), autosize: true, theme: 'dark', locale: 'es', timezone: 'America/Argentina/Buenos_Aires',

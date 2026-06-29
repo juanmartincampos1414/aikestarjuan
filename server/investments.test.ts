@@ -57,3 +57,10 @@ test('toYahooSymbol: mapea cada tipo de activo', async () => {
   assert.equal(toYahooSymbol('AL30', 'bono'), 'AL30.BA');
   assert.equal(toYahooSymbol('blue', 'dolar'), null);
 });
+
+test('toFinnhubSymbol: ticker plano sin prefijo de exchange', async () => {
+  const { toFinnhubSymbol } = await import('./services/marketData');
+  assert.equal(toFinnhubSymbol('NASDAQ:AAPL'), 'AAPL');
+  assert.equal(toFinnhubSymbol('NYSE:SPY'), 'SPY');
+  assert.equal(toFinnhubSymbol('tsla'), 'TSLA');
+});

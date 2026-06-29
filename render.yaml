@@ -49,6 +49,9 @@ services:
         sync: false                    # client_secret (secreto)
       - key: TIENDANUBE_ENCRYPTION_KEY
         sync: false                    # 32 bytes base64 para cifrar los tokens: `openssl rand -base64 32`
+      # --- Inversiones (cotizaciones en vivo) ---
+      - key: FINNHUB_API_KEY
+        sync: false                    # opcional: acciones/ETFs de EE.UU. en tiempo real (free en finnhub.io). Sin esto, se usa Yahoo.
       # --- Opcionales (dejar sin valor hasta que tengas las claves) ---
       # - key: AI_INTEGRATIONS_GEMINI_API_KEY   # solo transcripción de audio de WhatsApp
       #   sync: false

@@ -5,8 +5,9 @@
 // Funciona out-of-the-box, sin API key:
 //   - Acciones / CEDEARs / bonos / ETFs / cripto  -> Yahoo Finance (v8 chart)
 //   - Dólar argentino (blue, MEP, CCL, etc.)       -> dolarapi.com
-// Opcionalmente, si se define FINNHUB_API_KEY, se usa Finnhub para acciones US
-// (mejores límites). Cache en memoria (60s) para respetar los rate limits.
+// Si se define FINNHUB_API_KEY, las acciones/ETFs de EE.UU. se cotizan por Finnhub
+// (tiempo real, mejores límites), con respaldo automático a Yahoo. Cache en memoria
+// (60s) para respetar los rate limits.
 // =============================================================================
 import type { InvestmentAssetType } from '@shared/schema';
 
@@ -109,8 +110,36 @@ async function fetchDolarQuote(symbol: string): Promise<Quote | null> {
   return { price, currency: 'ARS', changePct: null, prevClose: null, asOf: Date.now(), source: 'dolarapi' };
 }
 
+// Símbolo Finnhub para acciones/ETFs de EE.UU.: ticker plano ("NASDAQ:AAPL" -> "AAPL").
+export function toFinnhubSymbol(symbol: string): string {
+  const raw = (symbol || '').trim();
+  return (raw.includes(':') ? raw.split(':')[1] : raw).toUpperCase();
+}
+
+// Finnhub /quote (acciones US en tiempo real). c=precio, pc=cierre previo, dp=variación %.
+// Devuelve null si no hay key o el símbolo es desconocido (Finnhub responde c=0).
+async function fetchFinnhubQuote(symbol: string): Promise<Quote | null> {
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return null;
+  const fs = toFinnhubSymbol(symbol);
+  if (!fs) return null;
+  const data = await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(fs)}&token=${key}`);
+  const price = typeof data?.c === 'number' ? data.c : null;
+  if (price == null || price === 0) return null; // c=0 => símbolo inexistente / sin datos
+  const prevClose = typeof data.pc === 'number' && data.pc !== 0 ? data.pc : null;
+  const changePct = typeof data.dp === 'number' ? data.dp : (prevClose ? ((price - prevClose) / prevClose) * 100 : null);
+  return { price, currency: 'USD', changePct, prevClose, asOf: Date.now(), source: 'finnhub' };
+}
+
 async function fetchQuote(symbol: string, assetType: InvestmentAssetType): Promise<Quote | null> {
   if (assetType === 'dolar') return fetchDolarQuote(symbol);
+  // Acciones/ETFs de EE.UU.: si hay key de Finnhub, se prioriza (tiempo real),
+  // con respaldo automático a Yahoo. El resto (BYMA, cripto, bonos) va por Yahoo,
+  // que Finnhub free no cubre bien.
+  if (assetType === 'accion_us' || assetType === 'etf') {
+    const fh = await fetchFinnhubQuote(symbol);
+    if (fh) return fh;
+  }
   const ys = toYahooSymbol(symbol, assetType);
   if (!ys) return null;
   return fetchYahooQuote(ys);
