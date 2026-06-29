@@ -122,6 +122,42 @@ async function fetchCryptoQuote(symbol: string): Promise<Quote | null> {
   return (await fetchCoinGeckoQuote(symbol)) || (await fetchCoinbaseQuote(symbol));
 }
 
+// ── BYMA (acciones argentinas, CEDEARs, bonos) vía data912 ───────────────────
+// Yahoo bloquea las IPs de datacenter; data912 es una API argentina gratuita que sí
+// responde desde la nube. Trae los paneles completos (precio `c` + variación).
+interface BymaRow { price: number; pct: number | null; kind: string }
+const bymaCache: { data: Map<string, BymaRow> | null; at: number } = { data: null, at: 0 };
+const BYMA_TTL_MS = 60_000;
+
+async function getByma(): Promise<Map<string, BymaRow>> {
+  if (bymaCache.data && Date.now() - bymaCache.at < BYMA_TTL_MS) return bymaCache.data;
+  const panels: [string, string][] = [['arg_stocks', 'Acción'], ['arg_cedears', 'CEDEAR'], ['arg_bonds', 'Bono']];
+  const map = new Map<string, BymaRow>();
+  await Promise.all(panels.map(async ([p, kind]) => {
+    const arr = await fetchJson(`https://data912.com/live/${p}`);
+    if (!Array.isArray(arr)) return;
+    for (const it of arr) {
+      const sym = String(it?.symbol || '').toUpperCase();
+      const price = typeof it?.c === 'number' ? it.c : (typeof it?.px_ask === 'number' ? it.px_ask : null);
+      if (sym && price != null && price > 0 && !map.has(sym)) {
+        map.set(sym, { price, pct: typeof it.pct_change === 'number' ? it.pct_change : null, kind });
+      }
+    }
+  }));
+  if (map.size > 0) { bymaCache.data = map; bymaCache.at = Date.now(); }
+  return bymaCache.data || map;
+}
+
+function bymaSymbol(symbol: string): string {
+  return (symbol.includes(':') ? symbol.split(':')[1] : symbol).toUpperCase().trim();
+}
+
+async function fetchBymaQuote(symbol: string): Promise<Quote | null> {
+  const row = (await getByma()).get(bymaSymbol(symbol));
+  if (!row) return null;
+  return { price: row.price, currency: 'ARS', changePct: row.pct, prevClose: null, asOf: Date.now(), source: 'data912' };
+}
+
 // Mapea el símbolo de dólar ("DOLAR:blue", "blue", "mep"...) a la "casa" de dolarapi.
 function toDolarCasa(symbol: string): string {
   const v = (symbol.includes(':') ? symbol.split(':')[1] : symbol).toLowerCase().trim();
@@ -195,6 +231,11 @@ async function fetchQuote(symbol: string, assetType: InvestmentAssetType): Promi
   if (assetType === 'accion_us' || assetType === 'etf') {
     const fh = await fetchFinnhubQuote(symbol);
     if (fh) return fh;
+  }
+  // Acciones argentinas / CEDEARs / bonos: data912 (cloud-friendly), respaldo Yahoo.
+  if (assetType === 'accion_arg' || assetType === 'cedear' || assetType === 'bono') {
+    const by = await fetchBymaQuote(symbol);
+    if (by) return by;
   }
   const ys = toYahooSymbol(symbol, assetType);
   if (!ys) return null;
@@ -281,7 +322,19 @@ export async function searchSymbols(query: string, assetType: InvestmentAssetTyp
       .map((r) => ({ symbol: String(r.symbol).toUpperCase(), name: r.description || r.symbol, hint: r.type || 'Acción' }));
   }
 
-  // BYMA / bonos: sin buscador gratuito confiable; se valida con la cotización.
+  // BYMA (acciones argentinas / CEDEARs / bonos): autocompletado vía data912.
+  if (assetType === 'accion_arg' || assetType === 'cedear' || assetType === 'bono') {
+    const m = await getByma();
+    const lq = q.toUpperCase();
+    const matches = Array.from(m.entries()).filter(([sym]) => sym.includes(lq));
+    // Primero los que empiezan con la búsqueda, luego el resto.
+    matches.sort((a, b) => {
+      const as = a[0].startsWith(lq) ? 0 : 1, bs = b[0].startsWith(lq) ? 0 : 1;
+      return as - bs || a[0].localeCompare(b[0]);
+    });
+    return matches.slice(0, 8).map(([sym, row]) => ({ symbol: sym, name: sym, hint: row.kind }));
+  }
+
   return [];
 }
 
