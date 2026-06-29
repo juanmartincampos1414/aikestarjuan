@@ -33,6 +33,7 @@ const TiendanubeCatalogPage = lazy(() => import("@/pages/tiendanube-catalog"));
 const CrmPage = lazy(() => import("@/pages/crm"));
 const WorkOrdersPage = lazy(() => import("@/pages/work-orders"));
 const RemitosPage = lazy(() => import("@/pages/remitos"));
+const InvestmentsPage = lazy(() => import("@/pages/investments"));
 const InvoicesPage = lazy(() => import("@/pages/invoices"));
 const CalendarPage = lazy(() => import("@/pages/calendar"));
 const OrphanTransfersPage = lazy(() => import("@/pages/orphan-transfers"));
@@ -93,6 +94,7 @@ function AuthenticatedRoutes() {
           <Route path="/crm" component={CrmPage} />
           <Route path="/ordenes" component={WorkOrdersPage} />
           <Route path="/remitos" component={RemitosPage} />
+          <Route path="/inversiones" component={InvestmentsPage} />
           {FEATURE_FLAGS.INVOICING_ENABLED && (
             <Route path="/invoices" component={InvoicesPage} />
           )}

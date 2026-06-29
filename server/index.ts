@@ -770,6 +770,9 @@ app.use((req, res, next) => {
   const { createRemitoTables } = await import('./migrations/0046_remitos');
   await createRemitoTables();
 
+  const { createInvestmentTables } = await import('./migrations/0047_investments');
+  await createInvestmentTables();
+
   // Task #282: barrer conversaciones vencidas (>30 min) cada 5 min para que
   // la tabla no crezca sin límite. El TTL ya se aplica en lecturas; esto
   // es solo limpieza física.

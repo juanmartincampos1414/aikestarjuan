@@ -3031,3 +3031,45 @@ export const remitoItems = pgTable("remito_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({ remIdx: index("remito_items_remito_idx").on(t.remitoId) }));
 export type RemitoItem = typeof remitoItems.$inferSelect;
+
+// =============================================================================
+// INVERSIONES — cartera monitoreada con cotizaciones en vivo (TradingView)
+// =============================================================================
+// Cada posición guarda el símbolo en formato TradingView (ej. "BCBA:GGAL",
+// "NASDAQ:AAPL", "BINANCE:BTCUSDT") para el widget, y el tipo de activo permite
+// derivar el símbolo del proveedor de cotizaciones (Yahoo) y la moneda.
+export const INVESTMENT_ASSET_TYPES = ['accion_arg', 'cedear', 'accion_us', 'etf', 'cripto', 'dolar', 'bono', 'otro'] as const;
+export type InvestmentAssetType = typeof INVESTMENT_ASSET_TYPES[number];
+export const INVESTMENT_ASSET_TYPE_LABELS: Record<InvestmentAssetType, string> = {
+  accion_arg: 'Acción argentina (BYMA)',
+  cedear: 'CEDEAR',
+  accion_us: 'Acción EE.UU.',
+  etf: 'ETF',
+  cripto: 'Cripto',
+  dolar: 'Dólar / divisa',
+  bono: 'Bono',
+  otro: 'Otro',
+};
+
+export const marketInvestments = pgTable("market_investments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // nombre legible, ej. "Galicia" o "Bitcoin"
+  symbol: text("symbol").notNull(), // símbolo TradingView, ej. "BCBA:GGAL" / "BINANCE:BTCUSDT" / "DOLAR:blue"
+  assetType: text("asset_type").notNull().default("otro"), // InvestmentAssetType
+  quantity: decimal("quantity", { precision: 20, scale: 8 }).notNull().default("0"),
+  buyPrice: decimal("buy_price", { precision: 20, scale: 8 }), // precio de compra unitario
+  currency: text("currency").notNull().default("ARS"), // moneda de la cotización (ARS/USD)
+  buyDate: timestamp("buy_date"),
+  broker: text("broker"),
+  notes: text("notes"),
+  archivedAt: timestamp("archived_at"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("market_investments_org_idx").on(t.organizationId, t.createdAt),
+}));
+export const insertMarketInvestmentSchema = createInsertSchema(marketInvestments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertMarketInvestment = z.infer<typeof insertMarketInvestmentSchema>;
+export type MarketInvestment = typeof marketInvestments.$inferSelect;
