@@ -5,6 +5,7 @@ import type { Express, Response } from 'express';
 import { requireAuth, requirePermission } from './middleware';
 import { INVESTMENT_ASSET_TYPES, type InvestmentAssetType } from '@shared/schema';
 import * as investments from '../services/investmentService';
+import { getInvestmentReport } from '../services/investmentReport';
 
 function parseAssetType(v: any): InvestmentAssetType {
   return (INVESTMENT_ASSET_TYPES as readonly string[]).includes(v) ? v : 'otro';
@@ -15,6 +16,21 @@ export function registerInvestmentRoutes(app: Express): void {
   app.get('/api/market-investments', requireAuth, async (req: any, res: Response) => {
     try { res.json(await investments.getPortfolio(req.organizationId)); }
     catch (e) { res.status(500).json({ message: 'No se pudieron cargar las inversiones' }); }
+  });
+
+  // Reporte por período (para el PDF visual de Reportes → Inversiones).
+  app.get('/api/market-investments/report', requireAuth, async (req: any, res: Response) => {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const parse = (v: any, fallback: number) => {
+        if (!v) return fallback;
+        const t = Math.floor(new Date(String(v)).getTime() / 1000);
+        return Number.isFinite(t) ? t : fallback;
+      };
+      const fromSec = parse(req.query.from, now - 30 * 86400);
+      const toSec = parse(req.query.to, now);
+      res.json(await getInvestmentReport(req.organizationId, fromSec, toSec));
+    } catch (e) { res.status(500).json({ message: 'No se pudo generar el reporte de inversiones' }); }
   });
 
   app.post('/api/market-investments', requireAuth, requirePermission('transactions:create'), async (req: any, res: Response) => {

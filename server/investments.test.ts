@@ -64,3 +64,24 @@ test('toFinnhubSymbol: ticker plano sin prefijo de exchange', async () => {
   assert.equal(toFinnhubSymbol('NYSE:SPY'), 'SPY');
   assert.equal(toFinnhubSymbol('tsla'), 'TSLA');
 });
+
+test('computePeriodReturn: variación del período', async () => {
+  const { computePeriodReturn } = await import('./services/investmentReport');
+  assert.equal(computePeriodReturn(100, 125), 25);
+  assert.equal(computePeriodReturn(200, 150), -25);
+  assert.equal(computePeriodReturn(null, 125), null);
+  assert.equal(computePeriodReturn(0, 50), null);
+});
+
+test('buildAllocation: porciones con % sobre el total, ordenadas', async () => {
+  const { buildAllocation } = await import('./services/investmentReport');
+  const a = buildAllocation([
+    { key: 'cripto', label: 'Cripto', valueARS: 300 },
+    { key: 'accion_us', label: 'Acción EE.UU.', valueARS: 700 },
+    { key: 'bono', label: 'Bono', valueARS: 0 },
+  ]);
+  assert.equal(a.length, 2); // descarta los de valor 0
+  assert.equal(a[0].key, 'accion_us'); // ordenado por valor desc
+  assert.equal(a[0].pct, 70);
+  assert.equal(a[1].pct, 30);
+});

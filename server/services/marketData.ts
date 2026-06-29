@@ -175,3 +175,53 @@ export async function getQuotes(
 export function quoteKey(symbol: string, assetType: string) {
   return cacheKey(symbol, assetType);
 }
+
+// ── Histórico (para reportes por período) ────────────────────────────────────
+// El histórico siempre sale de Yahoo (Finnhub free no tiene candles y dolarapi no
+// guarda historia). Para el dólar como activo se usa el oficial USD/ARS de Yahoo
+// como aproximación; si no hay dato, queda null.
+export interface HistRange { startClose: number | null; endClose: number | null; }
+
+const histCache = new Map<string, { value: HistRange; at: number }>();
+const HIST_TTL_MS = 30 * 60_000; // 30 min: el histórico cambia poco
+
+function toYahooHistSymbol(symbol: string, assetType: InvestmentAssetType): string | null {
+  if (assetType === 'dolar') return 'ARS=X'; // USD/ARS oficial en Yahoo
+  return toYahooSymbol(symbol, assetType);
+}
+
+// Devuelve el cierre más cercano a `fromSec` (primer dato del rango) y el más
+// reciente (`endClose`), usando velas diarias entre from y to.
+async function fetchYahooHist(yahooSymbol: string, fromSec: number, toSec: number): Promise<HistRange> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?period1=${fromSec}&period2=${toSec}&interval=1d`;
+  const data = await fetchJson(url);
+  const res = data?.chart?.result?.[0];
+  const closes: (number | null)[] | undefined = res?.indicators?.quote?.[0]?.close;
+  if (!Array.isArray(closes) || closes.length === 0) return { startClose: null, endClose: null };
+  const startClose = closes.find((c) => typeof c === 'number') ?? null;
+  let endClose: number | null = null;
+  for (let i = closes.length - 1; i >= 0; i--) { if (typeof closes[i] === 'number') { endClose = closes[i]!; break; } }
+  return { startClose, endClose };
+}
+
+export async function getHistoricalCloses(
+  items: { symbol: string; assetType: InvestmentAssetType }[],
+  fromSec: number,
+  toSec: number,
+): Promise<Map<string, HistRange>> {
+  const out = new Map<string, HistRange>();
+  const unique = new Map<string, { symbol: string; assetType: InvestmentAssetType }>();
+  for (const it of items) { if (it.symbol) unique.set(cacheKey(it.symbol, it.assetType), it); }
+  const now = Date.now();
+  const fromDay = Math.floor(fromSec / 86400);
+  await Promise.all(Array.from(unique.entries()).map(async ([key, it]) => {
+    const ck = `${key}::${fromDay}`;
+    const cached = histCache.get(ck);
+    if (cached && now - cached.at < HIST_TTL_MS) { out.set(key, cached.value); return; }
+    const ys = toYahooHistSymbol(it.symbol, it.assetType);
+    const value = ys ? await fetchYahooHist(ys, fromSec, toSec) : { startClose: null, endClose: null };
+    histCache.set(ck, { value, at: now });
+    out.set(key, value);
+  }));
+  return out;
+}

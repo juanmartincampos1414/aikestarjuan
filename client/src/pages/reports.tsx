@@ -61,6 +61,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { fetchWithAuth } from '@/lib/api';
 import html2canvas from 'html2canvas';
+import { InvestmentsReport } from '@/components/reports/InvestmentsReport';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { normalizeAmountInput } from '@/lib/currency';
@@ -1417,8 +1418,15 @@ export default function ReportsPage() {
           >
             📊 <span className="hidden xs:inline">Visión </span>Económica
           </TabsTrigger>
-          <TabsTrigger 
-            value="valuation" 
+          <TabsTrigger
+            value="investments"
+            className="flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium text-[11px] sm:text-sm transition-all data-[state=inactive]:bg-[#00D4FF]/10 data-[state=inactive]:text-[#00D4FF] data-[state=inactive]:hover:bg-[#00D4FF]/20 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#00D4FF] data-[state=active]:to-[#FF3366] data-[state=active]:text-white data-[state=active]:shadow-md"
+            data-testid="tab-investments"
+          >
+            📈 Inversiones
+          </TabsTrigger>
+          <TabsTrigger
+            value="valuation"
             className="flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium text-[11px] sm:text-sm transition-all data-[state=inactive]:bg-[#00D4FF]/10 data-[state=inactive]:text-[#00D4FF] data-[state=inactive]:hover:bg-[#00D4FF]/20 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#00D4FF] data-[state=active]:to-[#FF3366] data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             🏢 Valoración
@@ -1440,6 +1448,10 @@ export default function ReportsPage() {
             </TabsTrigger>
           )}
         </TabsList>
+
+        <TabsContent value="investments" className="space-y-4 min-w-0">
+          <InvestmentsReport />
+        </TabsContent>
 
         <TabsContent value="financial" className="space-y-4 min-w-0">
           <div className={`grid grid-cols-1 sm:grid-cols-2 ${hasInvestmentAccounts ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
