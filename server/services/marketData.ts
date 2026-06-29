@@ -71,6 +71,35 @@ export function toYahooSymbol(symbol: string, assetType: InvestmentAssetType): s
   }
 }
 
+// Cripto → id de CoinGecko (API gratis sin key, accesible desde la nube; Yahoo bloquea
+// las IPs de datacenter como las de Render). Cubre las monedas más comunes.
+const COINGECKO_IDS: Record<string, string> = {
+  btc: 'bitcoin', xbt: 'bitcoin', eth: 'ethereum', usdt: 'tether', usdc: 'usd-coin',
+  bnb: 'binancecoin', sol: 'solana', xrp: 'ripple', ada: 'cardano', doge: 'dogecoin',
+  dot: 'polkadot', matic: 'matic-network', pol: 'polygon-ecosystem-token', ltc: 'litecoin',
+  avax: 'avalanche-2', link: 'chainlink', trx: 'tron', shib: 'shiba-inu', dai: 'dai',
+  uni: 'uniswap', atom: 'cosmos', xlm: 'stellar', bch: 'bitcoin-cash', near: 'near',
+  apt: 'aptos', arb: 'arbitrum', op: 'optimism', fil: 'filecoin', etc: 'ethereum-classic',
+  algo: 'algorand', vet: 'vechain', icp: 'internet-computer', sand: 'the-sandbox', mana: 'decentraland',
+};
+export function toCoinGeckoId(symbol: string): string | null {
+  const raw = (symbol.includes(':') ? symbol.split(':')[1] : symbol).toLowerCase().trim();
+  const base = raw.replace(/(usdt|usdc|busd|usd)$/i, '') || raw;
+  return COINGECKO_IDS[base] || null;
+}
+async function fetchCryptoQuote(symbol: string): Promise<Quote | null> {
+  const id = toCoinGeckoId(symbol);
+  if (!id) return null;
+  const data = await fetchJson(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`);
+  const row = data?.[id];
+  if (!row || typeof row.usd !== 'number') return null;
+  return {
+    price: row.usd, currency: 'USD',
+    changePct: typeof row.usd_24h_change === 'number' ? row.usd_24h_change : null,
+    prevClose: null, asOf: Date.now(), source: 'coingecko',
+  };
+}
+
 // Mapea el símbolo de dólar ("DOLAR:blue", "blue", "mep"...) a la "casa" de dolarapi.
 function toDolarCasa(symbol: string): string {
   const v = (symbol.includes(':') ? symbol.split(':')[1] : symbol).toLowerCase().trim();
@@ -133,9 +162,14 @@ async function fetchFinnhubQuote(symbol: string): Promise<Quote | null> {
 
 async function fetchQuote(symbol: string, assetType: InvestmentAssetType): Promise<Quote | null> {
   if (assetType === 'dolar') return fetchDolarQuote(symbol);
+  // Cripto: CoinGecko (gratis, sin key, accesible desde la nube), con respaldo a Yahoo.
+  if (assetType === 'cripto') {
+    const cg = await fetchCryptoQuote(symbol);
+    if (cg) return cg;
+  }
   // Acciones/ETFs de EE.UU.: si hay key de Finnhub, se prioriza (tiempo real),
-  // con respaldo automático a Yahoo. El resto (BYMA, cripto, bonos) va por Yahoo,
-  // que Finnhub free no cubre bien.
+  // con respaldo automático a Yahoo. BYMA/bonos van por Yahoo (ojo: Yahoo bloquea
+  // IPs de datacenter, así que en la nube conviene la key de Finnhub para US).
   if (assetType === 'accion_us' || assetType === 'etf') {
     const fh = await fetchFinnhubQuote(symbol);
     if (fh) return fh;
@@ -190,6 +224,17 @@ function toYahooHistSymbol(symbol: string, assetType: InvestmentAssetType): stri
   return toYahooSymbol(symbol, assetType);
 }
 
+// Histórico de cripto vía CoinGecko (rango), para que el reporte funcione también
+// en la nube (Yahoo bloquea datacenters).
+async function fetchCryptoHist(symbol: string, fromSec: number, toSec: number): Promise<HistRange> {
+  const id = toCoinGeckoId(symbol);
+  if (!id) return { startClose: null, endClose: null };
+  const data = await fetchJson(`https://api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${fromSec}&to=${toSec}`);
+  const prices: [number, number][] | undefined = data?.prices;
+  if (!Array.isArray(prices) || prices.length === 0) return { startClose: null, endClose: null };
+  return { startClose: prices[0]?.[1] ?? null, endClose: prices[prices.length - 1]?.[1] ?? null };
+}
+
 // Devuelve el cierre más cercano a `fromSec` (primer dato del rango) y el más
 // reciente (`endClose`), usando velas diarias entre from y to.
 async function fetchYahooHist(yahooSymbol: string, fromSec: number, toSec: number): Promise<HistRange> {
@@ -218,8 +263,13 @@ export async function getHistoricalCloses(
     const ck = `${key}::${fromDay}`;
     const cached = histCache.get(ck);
     if (cached && now - cached.at < HIST_TTL_MS) { out.set(key, cached.value); return; }
-    const ys = toYahooHistSymbol(it.symbol, it.assetType);
-    const value = ys ? await fetchYahooHist(ys, fromSec, toSec) : { startClose: null, endClose: null };
+    let value: HistRange;
+    if (it.assetType === 'cripto') {
+      value = await fetchCryptoHist(it.symbol, fromSec, toSec);
+    } else {
+      const ys = toYahooHistSymbol(it.symbol, it.assetType);
+      value = ys ? await fetchYahooHist(ys, fromSec, toSec) : { startClose: null, endClose: null };
+    }
     histCache.set(ck, { value, at: now });
     out.set(key, value);
   }));

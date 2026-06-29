@@ -65,6 +65,15 @@ test('toFinnhubSymbol: ticker plano sin prefijo de exchange', async () => {
   assert.equal(toFinnhubSymbol('tsla'), 'TSLA');
 });
 
+test('toCoinGeckoId: mapea tickers de cripto (incluye pares con USDT/USD)', async () => {
+  const { toCoinGeckoId } = await import('./services/marketData');
+  assert.equal(toCoinGeckoId('btc'), 'bitcoin');
+  assert.equal(toCoinGeckoId('ETH'), 'ethereum');
+  assert.equal(toCoinGeckoId('BINANCE:BTCUSDT'), 'bitcoin');
+  assert.equal(toCoinGeckoId('ethusd'), 'ethereum');
+  assert.equal(toCoinGeckoId('noexiste'), null);
+});
+
 test('computePeriodReturn: variación del período', async () => {
   const { computePeriodReturn } = await import('./services/investmentReport');
   assert.equal(computePeriodReturn(100, 125), 25);
