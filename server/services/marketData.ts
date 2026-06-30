@@ -280,9 +280,16 @@ export async function resolveQuote(symbol: string, assetType: InvestmentAssetTyp
 }
 
 // ── Búsqueda de símbolos (autocompletado del alta de inversiones) ─────────────
-export interface SymbolSuggestion { symbol: string; name: string; hint?: string }
+// Cada sugerencia trae el tipo de activo y la fuente de la que se tomará el precio.
+export interface SymbolSuggestion {
+  symbol: string;
+  name: string;
+  assetType: InvestmentAssetType;
+  source: string; // fuente del precio: CoinGecko / Finnhub / BYMA (data912) / dolarapi
+  kind: string;   // etiqueta corta para la UI: Cripto / EE.UU. / Acción / CEDEAR / Bono / Dólar
+}
 
-const DOLAR_SUGGESTIONS: SymbolSuggestion[] = [
+const DOLAR_LIST: { symbol: string; name: string }[] = [
   { symbol: 'blue', name: 'Dólar Blue' },
   { symbol: 'oficial', name: 'Dólar Oficial' },
   { symbol: 'mep', name: 'Dólar MEP / Bolsa' },
@@ -292,50 +299,76 @@ const DOLAR_SUGGESTIONS: SymbolSuggestion[] = [
   { symbol: 'mayorista', name: 'Dólar Mayorista' },
 ];
 
-export async function searchSymbols(query: string, assetType: InvestmentAssetType): Promise<SymbolSuggestion[]> {
-  const q = (query || '').trim();
-  if (q.length < 1) return assetType === 'dolar' ? DOLAR_SUGGESTIONS : [];
+async function searchDolar(q: string): Promise<SymbolSuggestion[]> {
+  const lq = q.toLowerCase();
+  const matches = q ? DOLAR_LIST.filter((d) => d.symbol.includes(lq) || d.name.toLowerCase().includes(lq) || 'dolar'.includes(lq)) : DOLAR_LIST;
+  return matches.map((d) => ({ symbol: d.symbol, name: d.name, assetType: 'dolar', source: 'dolarapi', kind: 'Dólar' }));
+}
 
-  if (assetType === 'dolar') {
-    const lq = q.toLowerCase();
-    return DOLAR_SUGGESTIONS.filter((d) => d.symbol.includes(lq) || d.name.toLowerCase().includes(lq));
-  }
+async function searchCryptoSymbols(q: string): Promise<SymbolSuggestion[]> {
+  const data = await fetchJson(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`);
+  const coins: any[] = Array.isArray(data?.coins) ? data.coins : [];
+  return coins
+    .sort((a, b) => (a.market_cap_rank ?? 1e9) - (b.market_cap_rank ?? 1e9))
+    .slice(0, 6)
+    .map((c) => ({ symbol: String(c.symbol || '').toUpperCase(), name: c.name, assetType: 'cripto' as InvestmentAssetType, source: 'CoinGecko', kind: 'Cripto' }))
+    .filter((c) => c.symbol);
+}
 
-  if (assetType === 'cripto') {
-    const data = await fetchJson(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`);
-    const coins: any[] = Array.isArray(data?.coins) ? data.coins : [];
-    return coins
-      .sort((a, b) => (a.market_cap_rank ?? 1e9) - (b.market_cap_rank ?? 1e9))
-      .slice(0, 8)
-      .map((c) => ({ symbol: String(c.symbol || '').toUpperCase(), name: c.name, hint: 'Cripto' }))
-      .filter((c) => c.symbol);
-  }
-
-  if (assetType === 'accion_us' || assetType === 'etf') {
-    const key = process.env.FINNHUB_API_KEY;
-    if (!key) return [];
-    const data = await fetchJson(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`);
-    const result: any[] = Array.isArray(data?.result) ? data.result : [];
-    return result
-      .filter((r) => r.symbol && !String(r.symbol).includes('.')) // descartar símbolos de otros mercados
-      .slice(0, 8)
-      .map((r) => ({ symbol: String(r.symbol).toUpperCase(), name: r.description || r.symbol, hint: r.type || 'Acción' }));
-  }
-
-  // BYMA (acciones argentinas / CEDEARs / bonos): autocompletado vía data912.
-  if (assetType === 'accion_arg' || assetType === 'cedear' || assetType === 'bono') {
-    const m = await getByma();
-    const lq = q.toUpperCase();
-    const matches = Array.from(m.entries()).filter(([sym]) => sym.includes(lq));
-    // Primero los que empiezan con la búsqueda, luego el resto.
-    matches.sort((a, b) => {
-      const as = a[0].startsWith(lq) ? 0 : 1, bs = b[0].startsWith(lq) ? 0 : 1;
-      return as - bs || a[0].localeCompare(b[0]);
+async function searchUsSymbols(q: string): Promise<SymbolSuggestion[]> {
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return [];
+  const data = await fetchJson(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`);
+  const result: any[] = Array.isArray(data?.result) ? data.result : [];
+  return result
+    .filter((r) => r.symbol && !String(r.symbol).includes('.'))
+    .slice(0, 6)
+    .map((r) => {
+      const isEtf = String(r.type || '').toUpperCase().includes('ETF');
+      return { symbol: String(r.symbol).toUpperCase(), name: r.description || r.symbol, assetType: (isEtf ? 'etf' : 'accion_us') as InvestmentAssetType, source: 'Finnhub', kind: 'EE.UU.' };
     });
-    return matches.slice(0, 8).map(([sym, row]) => ({ symbol: sym, name: sym, hint: row.kind }));
+}
+
+async function searchBymaSymbols(q: string): Promise<SymbolSuggestion[]> {
+  const m = await getByma();
+  const lq = q.toUpperCase();
+  const matches = Array.from(m.entries()).filter(([sym]) => sym.includes(lq));
+  matches.sort((a, b) => (a[0].startsWith(lq) ? 0 : 1) - (b[0].startsWith(lq) ? 0 : 1) || a[0].localeCompare(b[0]));
+  return matches.slice(0, 6).map(([sym, row]) => ({
+    symbol: sym, name: sym,
+    assetType: (row.kind === 'CEDEAR' ? 'cedear' : row.kind === 'Bono' ? 'bono' : 'accion_arg') as InvestmentAssetType,
+    source: 'BYMA (data912)', kind: row.kind,
+  }));
+}
+
+const SOURCE_BY_TYPE: Partial<Record<InvestmentAssetType, (q: string) => Promise<SymbolSuggestion[]>>> = {
+  dolar: searchDolar, cripto: searchCryptoSymbols, accion_us: searchUsSymbols, etf: searchUsSymbols,
+  accion_arg: searchBymaSymbols, cedear: searchBymaSymbols, bono: searchBymaSymbols,
+};
+
+// Búsqueda. Sin assetType → busca en TODAS las fuentes (BYMA + CoinGecko + Finnhub +
+// dólar) y devuelve cada sugerencia con su tipo y la fuente del precio.
+export async function searchSymbols(query: string, assetType?: InvestmentAssetType): Promise<SymbolSuggestion[]> {
+  const q = (query || '').trim();
+
+  if (assetType && SOURCE_BY_TYPE[assetType]) {
+    if (q.length < 1) return assetType === 'dolar' ? searchDolar('') : [];
+    return SOURCE_BY_TYPE[assetType]!(q);
   }
 
-  return [];
+  if (q.length < 1) return [];
+  // BYMA y dólar son baratos (cache / lista fija) → desde 1 letra.
+  // CoinGecko y Finnhub son llamadas externas → desde 2 letras.
+  const tasks: Promise<SymbolSuggestion[]>[] = [searchBymaSymbols(q), searchDolar(q)];
+  if (q.length >= 2) tasks.push(searchCryptoSymbols(q), searchUsSymbols(q));
+  const groups = await Promise.all(tasks.map((p) => p.catch(() => [] as SymbolSuggestion[])));
+  const all = groups.flat();
+
+  // Orden: símbolo exacto primero, luego los que empiezan con la búsqueda.
+  const ql = q.toUpperCase();
+  const rank = (s: SymbolSuggestion) => (s.symbol === ql ? 0 : s.symbol.startsWith(ql) ? 1 : 2);
+  all.sort((a, b) => rank(a) - rank(b));
+  return all.slice(0, 12);
 }
 
 // ── Histórico (para reportes por período) ────────────────────────────────────

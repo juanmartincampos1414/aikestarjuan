@@ -22,7 +22,9 @@ export function registerInvestmentRoutes(app: Express): void {
   // Autocompletado de símbolos en el alta de inversiones.
   app.get('/api/market-investments/search', requireAuth, async (req: any, res: Response) => {
     try {
-      const results = await searchSymbols(String(req.query.q || ''), parseAssetType(req.query.type));
+      // Sin `type` → busca en todas las fuentes (BYMA, CoinGecko, Finnhub, dólar).
+      const type = req.query.type ? parseAssetType(req.query.type) : undefined;
+      const results = await searchSymbols(String(req.query.q || ''), type);
       res.json({ results });
     } catch { res.json({ results: [] }); }
   });

@@ -313,12 +313,13 @@ function InvestmentForm({ existing, onClose }: { existing?: any; onClose: () => 
     const q = symbol.trim();
     const t = setTimeout(async () => {
       try {
-        const r = await fetchWithAuth(`/market-investments/search?q=${encodeURIComponent(q)}&type=${assetType}`);
+        // Búsqueda global: todas las fuentes (BYMA, CoinGecko, Finnhub, dólar).
+        const r = await fetchWithAuth(`/market-investments/search?q=${encodeURIComponent(q)}`);
         setSuggestions(r?.results ?? []);
       } catch { setSuggestions([]); }
     }, 300);
     return () => clearTimeout(t);
-  }, [symbol, assetType, showSug]);
+  }, [symbol, showSug]);
 
   useEffect(() => {
     const s = symbol.trim();
@@ -336,6 +337,10 @@ function InvestmentForm({ existing, onClose }: { existing?: any; onClose: () => 
   const pickSuggestion = (s: any) => {
     setSymbol(s.symbol);
     if (!name.trim() && s.name) setName(s.name);
+    if (s.assetType) {
+      setAssetType(s.assetType);
+      if (!touchedCurrency) setCurrency(defaultCurrencyFor(s.assetType));
+    }
     setShowSug(false);
   };
 
@@ -409,7 +414,10 @@ function InvestmentForm({ existing, onClose }: { existing?: any; onClose: () => 
                       className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
                     >
                       <span className="truncate"><span className="font-medium">{s.symbol}</span> <span className="text-muted-foreground">· {s.name}</span></span>
-                      {s.hint && <span className="text-[10px] text-muted-foreground shrink-0">{s.hint}</span>}
+                      <span className="flex flex-col items-end shrink-0 leading-tight">
+                        {s.kind && <span className="text-[10px] font-medium">{s.kind}</span>}
+                        {s.source && <span className="text-[9px] text-muted-foreground">{s.source}</span>}
+                      </span>
                     </button>
                   ))}
                 </div>
